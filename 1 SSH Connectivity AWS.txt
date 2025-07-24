@@ -8,7 +8,7 @@ e.g
 ssh -i ~/keyfile.pem ubuntu@172.31.1.1          : If key is .pem 
 
 we can also connect using ip only along with the key mention
-e.g: ssh -i ~/keyfile.pem 172.31.1.1        # This is the private Ip address
+e.g: ssh -i ~/keyfile.pem 172.31.1.1        # This is the private Ip address and connection will establish if in same vpc
 
 to avoid mentioned key again and agian we should make passwordless authentication. 
 this can be done using the below command: Make sure use the download .pem file or any downloaded from aws. 
