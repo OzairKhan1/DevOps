@@ -14,6 +14,14 @@ to avoid mentioned key again and agian we should make passwordless authenticatio
 this can be done using the below command: Make sure use the download .pem file or any downloaded from aws. 
 use this command to copy the key to remote server as well in order to avoid copying again and again
 
+---------------------- Easy Way for Setting Passwordless Authentication---------------------------------------
+1: Create ssh-keys using this command: ssh-keygen
+2: using below command command to copy the keys to the remote server: 
+  ssh-copy-id -i ~/.ssh/id_ed25519.pub -f -o IdentityFile=~/key.pem ubuntu@Public_Ip
+
+using the above command then servers can be easily access either username@ip or public or private ip only
+--------------------------------------------------------------------------------------------------------------
+
 ssh-copy-id -f "-o IdentityFile ~/pathFile.pem" user@ip of user
 e.g:      ssh-copy-id -f "-o IdentityFile ~/path_to_file.pem" ubuntu@172.31.1.1
 or the longest form of the command with full description
