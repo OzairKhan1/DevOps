@@ -1,9 +1,9 @@
 1: Open PowerShell as Administrator
- Open Notepad → Paste the script : The Script is mention in the Folder with name: ConfigureRemotingForAnsible.ps1
-
-Save as: ConfigureRemotingForAnsible.ps1
+ Open Notepad → Download the Script : The Script is mention in the same Folder with name: ConfigureRemotingForAnsible.ps1
 
 Run it in PowerShell using below comand But Remember the File must be in the same Folder of PowerShell:
+
+Move to the same directory where the file is downloaded. 
 
 Set-ExecutionPolicy RemoteSigned -Force
 .\ConfigureRemotingForAnsible.ps1
@@ -19,7 +19,7 @@ Set-ExecutionPolicy RemoteSigned -Force
 2: Open wf.msc (Windows Firewall with Advanced Security)
 
 a) Find the rule: “Windows Remote Management (HTTP-In)” 
- // Comment: http-in, private or public, for domestic router this is normally private and can also be checked using this command in pewershell: Get-NetConnectionProfile
+  Comments: http-in, private or public, for domestic router this is normally private and can also be checked using this command in pewershell:            Get-NetConnectionProfile
 
 b) Right-click → Properties → Scope tab
 
