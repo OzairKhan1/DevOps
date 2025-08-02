@@ -2,48 +2,49 @@ import socket
 import requests
 from datetime import datetime
 import os
-import json
 
 # Identify system
 system_id = socket.gethostname()
 
 # Server settings
-SERVER_URL = f"http://PUBLIC-IP/get_data/{system_id}"
-API_TOKEN = "ADD YOUR TOKENS HERE"
+SERVER_URL = f"http://Public_ip:8000/get_data/{system_id}"
+API_TOKEN = "Your_Tokens"
 HEADERS = {"X-Auth-Token": API_TOKEN}
 
 # Timestamp for filename
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-output_dir = "/tmp/fetched_data"
-os.makedirs(output_dir, exist_ok=True)
-output_file = f"{output_dir}/{system_id}_{timestamp}.txt"
 
-def write_data_to_file(data, path):
-    try:
-        with open(path, "w", encoding='utf-8') as f:
-            if isinstance(data, (dict, list)):
-                json.dump(data, f, indent=2)
-            elif isinstance(data, str):
-                f.write(data)
-            else:
-                f.write(str(data))  # fallback
-        print(f"✅ Data saved: {path}")
-    except Exception as write_err:
-        print(f"❌ Write error: {write_err}")
+# Cross-platform output directory
+home_dir = os.path.expanduser("~")
+output_dir = os.path.join(home_dir, "fetched_data")
+os.makedirs(output_dir, exist_ok=True)
+
+# Final output path
+output_file = os.path.join(output_dir, f"{system_id}_{timestamp}.txt")
 
 try:
     response = requests.get(SERVER_URL, headers=HEADERS, timeout=10)
     response.raise_for_status()
 
-    # Grab 'data' key from JSON or fallback to entire body
-    json_data = response.json()
-    data = json_data.get("data", json_data)
+    try:
+        json_data = response.json()
+        if not isinstance(json_data, dict):
+            raise ValueError("Unexpected JSON format (not a dictionary)")
 
-    write_data_to_file(data, output_file)
+        data = json_data.get("data", "No data returned in 'data' field")
 
-except requests.exceptions.RequestException as req_err:
-    print(f"❌ Request failed: {req_err}")
-except ValueError as json_err:
-    print(f"❌ JSON decoding failed: {json_err}")
+        # ✅ Convert data to string if needed (list, dict, etc.)
+        if not isinstance(data, str):
+            data = str(data)
+
+    except Exception as json_err:
+        data = f"⚠️ Failed to parse JSON: {json_err}\nRaw response:\n{response.text}"
+
+    # Save the data
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(data)
+
+    print(f"✅ Data saved: {output_file}")
+
 except Exception as e:
-    print(f"❌ Unexpected error: {e}")
+    print(f"❌ Fetch failed: {e}")
