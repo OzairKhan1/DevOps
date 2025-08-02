@@ -21,5 +21,6 @@ def get_data(system_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# This block is only used for manual testing (not triggered when using Gunicorn)
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
