@@ -1,6 +1,5 @@
-⚠️ Note: This is not a production-grade server-client architecture, but it serves as a highly practical solution for daily 
-automation and routine data tasks. There is always room for improvement, and your suggestions are welcome!
-
+⚠️ Note: This Setup runs using Gunicorn for improved stability and performance. While this is not a full production-grade server-client architecture, it serves as a highly practical and efficient solution for daily automation and routine data tasks.
+There’s always room for improvement — your suggestions are welcome!
 Current Design Overview
 
 1: Server Reads from Two Core Files:
