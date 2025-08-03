@@ -1,0 +1,95 @@
+==============================
+These are the Main Filters:
+
+ansible localhost -m setup -a 'filter=ansible_mem*'
+ansible localhost -m setup -a 'filter=ansible_proc*'
+ansible localhost -m setup -a 'filter=ansible_mount*'
+ansible localhost -m setup -a 'filter=ansible_dis*'
+ansible localhost -m setup -a 'filter=ansible_kernel*'
+ansible localhost -m setup -a 'filter=ansible_default_ipv4*'
+ansible localhost -m setup -a 'filter=ansible_hostname*'
+ansible localhost -m setup -a 'filter=ansible_architecture*'
+ansible localhost -m setup -a 'filter=ansible_interfaces*'
+ansible localhost -m setup -a 'filter=ansible_dns*'
+
+
+==============================
+🧠 COMMONLY USED FACTS
+==============================
+
+🔸 SYSTEM
+- OS Name:           {{ ansible_facts['distribution'] }}
+- OS Version:        {{ ansible_facts['distribution_version'] }}
+- Architecture:      {{ ansible_facts['architecture'] }}
+- Kernel:            {{ ansible_facts['kernel'] }}
+- Hostname:          {{ ansible_facts['hostname'] }}
+- FQDN:              {{ ansible_facts['fqdn'] }}
+
+🔸 NETWORK
+- Default IPv4:      {{ ansible_facts['default_ipv4']['address'] }}
+- Interface Names:   {{ ansible_facts['interfaces'] }}
+- MAC Address:       {{ ansible_facts['ansible_default_ipv4']['macaddress'] }}
+- DNS Servers:       {{ ansible_facts['dns']['nameservers'] }}
+
+🔸 CPU
+- CPU Cores:         {{ ansible_facts['processor_cores'] }}
+- CPU Threads:       {{ ansible_facts['processor_threads_per_core'] }}
+- Processor Count:   {{ ansible_facts['processor_count'] }}
+- CPUs:              {{ ansible_facts['processor'] }}
+
+🔸 MEMORY
+- Total RAM (MB):    {{ ansible_facts['memory_mb']['real']['total'] }}
+- Free RAM (MB):     {{ ansible_facts['memory_mb']['real']['free'] }}
+- Swap Total (MB):   {{ ansible_facts['memory_mb']['swap']['total'] }}
+
+🔸 STORAGE (DISKS)
+- Mounts Info:       {{ ansible_facts['mounts'] }}
+  For example:
+    Total: {{ ansible_facts['mounts'][0]['size_total'] | int // 1024**3 }} GB
+    Used:  {{ ansible_facts['mounts'][0]['size_used'] | int // 1024**3 }} GB
+    Device: {{ ansible_facts['mounts'][0]['device'] }}
+
+==============================
+📦 EXPORTING SELECT FACTS
+==============================
+
+Dump selected info to file:
+  - name: Save system info to file
+    copy:
+      content: |
+        OS: {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}
+        CPU Cores: {{ ansible_facts['processor_cores'] }}
+        Memory: {{ ansible_facts['memory_mb']['real']['total'] }} MB
+        Storage: {{ ansible_facts['mounts'][0]['size_total'] | int // 1024**3 }} GB
+      dest: /tmp/system_report.txt
+
+==============================
+⚙️ JINJA2 EXAMPLES
+==============================
+
+- Default value:       {{ var | default('N/A') }}
+- Convert bytes to GB: {{ size_bytes | int // 1024**3 }} GB
+- Get list item:       {{ mylist[0] }}
+- Conditional:         {% if ansible_facts['processor_cores'] > 4 %} Powerful {% endif %}
+
+==============================
+🧪 FILTERING FACTS
+==============================
+
+Use setup module with filters:
+  - name: Only gather network facts
+    ansible.builtin.setup:
+      filter: "ansible_default_ipv4"
+
+  - name: Only gather memory facts
+    ansible.builtin.setup:
+      filter: "memory_mb"
+
+==============================
+📝 NOTES
+==============================
+
+- All memory values are in MB.
+- Disk sizes are in **bytes**; convert to GB with:  size | int // 1024**3
+- Always use `| default('value')` for safer templates.
+
