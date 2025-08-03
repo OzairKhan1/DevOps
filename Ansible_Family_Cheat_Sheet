@@ -1,6 +1,5 @@
-==============================
 These are the Main Filters:
-
+===============================================================
 ansible localhost -m setup -a 'filter=ansible_mem*'
 ansible localhost -m setup -a 'filter=ansible_proc*'
 ansible localhost -m setup -a 'filter=ansible_mount*'
@@ -11,7 +10,7 @@ ansible localhost -m setup -a 'filter=ansible_hostname*'
 ansible localhost -m setup -a 'filter=ansible_architecture*'
 ansible localhost -m setup -a 'filter=ansible_interfaces*'
 ansible localhost -m setup -a 'filter=ansible_dns*'
-
+===============================================================
 
 🖥️ CPU Info
 Fact	Description
