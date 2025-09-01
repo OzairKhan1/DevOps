@@ -1,0 +1,107 @@
+1: Open PowerShell as Administrator
+ Open Notepad → Download the Script : The Script is mention in the same Folder with name: ConfigureRemotingForAnsible.ps1
+
+Run it in PowerShell using below comand But Remember the File must be in the same Folder of PowerShell:
+
+Move to the same directory where the file is downloaded. 
+
+Set-ExecutionPolicy RemoteSigned -Force
+.\ConfigureRemotingForAnsible.ps1
+
+
+------------ How to change directory on PowerShell---------------------------------
+cd "C:\Users\ozair\Downloads" or you can paste direct path in the command
+
+Set-ExecutionPolicy RemoteSigned -Force
+& "C:\Users\ozair\Downloads\ConfigureRemotingForAnsible.ps1"
+
+
+2: Open wf.msc (Windows Firewall with Advanced Security)
+
+a) Find the rule: “Windows Remote Management (HTTP-In)” 
+  Comments: http-in, private or public, for domestic router this is normally private and can also be checked using this command in pewershell:            Get-NetConnectionProfile
+
+b) Right-click → Properties → Scope tab
+
+c) Under Remote IP address, select:
+
+d) These IP addresses
+
+e) Add your EC2’s public IP      // Comment:  Why this is important to enhance the security because if port forwarding is enabled any traffic come on that port will br redirected to your pc.
+
+f) Apply and save
+
+
+
+3: Go to Linux and install pywinrm for communicating with Window. Ansible can't do it directly; 
+
+run commands 1 by 1: 
+
+sudo apt update
+sudo apt install python3-pip -y
+pip install "pywinrm>=0.4.2"
+ 
+verify installation
+pip show pywinrm
+
+To check connection b/w window and linux: run this on linux: 
+ansible windows -i hosts.ini -m win_ping
+
+in the above command the windows is just a name in the ansible inventory file
+
+the content of hosts.ini file is :
+
+[windows]
+Public IP
+
+[windows:vars]
+ansible_user=Administrator
+ansible_password=YourDecryptedPasswordHere          #Password of remote server should be mention here
+ansible_connection=winrm
+ansible_winrm_transport=basic
+ansible_port=5985
+ansible_winrm_server_cert_validation=ignore
+ 
+
+
+_________________________________________ Now If there are more Windows Servers _____________________________________
+
+Easy way to create hosts.ini file : 
+
+Case1: If all the images like ec2_instance has the same Password: then use the first option
+
+[windows]
+win1 ansible_host=13.201.55.33
+win2 ansible_host=13.201.55.45
+win3 ansible_host=13.201.55.51
+
+[windows:vars]
+ansible_user=Administrator
+ansible_password=SamePasswordForAll
+ansible_connection=winrm
+ansible_winrm_transport=basic
+ansible_port=5985
+ansible_winrm_server_cert_validation=ignore
+
+
+Case2: If the password is different for each window: 
+
+hosts.ini will look like this
+
+[windows]
+win1 ansible_host=13.201.55.33 ansible_password=Password1
+win2 ansible_host=13.201.55.45 ansible_password=Password2
+win3 ansible_host=13.201.55.51 ansible_password=Password3
+
+[windows:vars]
+ansible_user=Administrator
+ansible_connection=winrm
+ansible_winrm_transport=basic
+ansible_port=5985
+ansible_winrm_server_cert_validation=ignore
+
+
+
+
+
+

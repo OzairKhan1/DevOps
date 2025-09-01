@@ -1,0 +1,69 @@
+These are the Main Filters:
+===============================================================
+ansible localhost -m setup -a 'filter=ansible_mem*'
+ansible localhost -m setup -a 'filter=ansible_proc*'
+ansible localhost -m setup -a 'filter=ansible_mount*'
+ansible localhost -m setup -a 'filter=ansible_dis*'
+ansible localhost -m setup -a 'filter=ansible_kernel*'
+ansible localhost -m setup -a 'filter=ansible_default_ipv4*'
+ansible localhost -m setup -a 'filter=ansible_hostname*'
+ansible localhost -m setup -a 'filter=ansible_architecture*'
+ansible localhost -m setup -a 'filter=ansible_interfaces*'
+ansible localhost -m setup -a 'filter=ansible_dns*'
+===============================================================
+
+🖥️ CPU Info
+Fact	Description
+ansible_facts.processor[0]	CPU model name
+ansible_facts.processor_cores	Cores per socket
+ansible_facts.processor_count	Number of physical CPUs
+ansible_facts.processor_threads_per_core	Threads per core
+
+💾 Memory Info
+Fact	Description	Unit
+ansible_facts.memtotal_mb	Total physical memory	MB
+ansible_facts.memfree_mb	Free physical memory	MB
+ansible_facts.swaptotal_mb	Total swap memory	MB
+ansible_facts.swapfree_mb	Free swap memory	MB
+
+💽 Disk / Mount Info
+Fact	Description
+ansible_facts.mounts	List of mounted partitions (with size, device, fstype, etc.)
+ansible_facts.mounts[0].mount	Mount point (e.g., /)
+ansible_facts.mounts[0].size_total	Partition size (bytes)
+ansible_facts.mounts[0].size_available	Available space (bytes)
+
+🌐 Network Info
+Fact	Description
+ansible_facts.hostname	System hostname
+ansible_facts.domain	Domain name
+ansible_facts.fqdn	Fully qualified domain name
+ansible_facts.interfaces	List of network interfaces
+ansible_facts.default_ipv4.address	Default IPv4 address
+ansible_facts.default_ipv4.interface	Default network interface
+ansible_facts.all_ipv4_addresses	All IPv4 addresses
+
+💻 OS & Platform
+Fact	Description
+ansible_facts.distribution	OS name (e.g., Ubuntu, CentOS)
+ansible_facts.distribution_version	Version number
+ansible_facts.os_family	OS family (RedHat, Debian, etc.)
+ansible_facts.architecture	CPU architecture (x86_64, arm64, etc.)
+ansible_facts.kernel	Kernel name
+ansible_facts.kernel_version	Kernel version
+
+🧭 Time & Uptime
+Fact	Description
+ansible_facts.date_time.date	Current date
+ansible_facts.date_time.time	Current time
+ansible_facts.uptime_seconds	Uptime in seconds
+ansible_facts.uptime_days	Uptime in days
+
+📦 Package Manager Info
+Fact	Description
+ansible_facts.pkg_mgr	Default package manager (apt, yum, dnf, etc.)
+
+- All memory values are in MB.
+- Disk sizes are in **bytes**; convert to GB with:  size | int // 1024**3
+- Always use `| default('value')` for safer templates.
+
