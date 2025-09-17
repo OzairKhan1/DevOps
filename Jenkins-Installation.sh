@@ -1,6 +1,6 @@
 # 1. Update packages
 sudo apt update -y
-sudo apt upgrade -y
+#sudo apt upgrade -y
 
 # 2. Install Java (Jenkins needs Java 11 or 17)
 sudo apt install -y fontconfig openjdk-17-jre
