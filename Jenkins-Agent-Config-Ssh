@@ -4,6 +4,6 @@ Here’s a Git-friendly version of the Jenkins agent issues you ran into:
 on Agent node create a directory: e.g: /home/ubuntu/jenkinsWorkspace
 
 ✅ Install Java on the agent and make sure java is in the PATH. Git the command from Internet for new version installation
-
+    Command: sudo apt-get install -y openjdk-11-jdk
 ✅ Set up SSH key-based auth (public key on agent, private key in Jenkins).
 Jenkins Master mush have a private key in Jenkins and Agent/Agents must have public Key in authorized-keys
