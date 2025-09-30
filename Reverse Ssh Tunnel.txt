@@ -12,7 +12,7 @@
    sudo systemctl daemon-reload
 
 4. From LAN side (your PC/router side), run the reverse SSH tunnel:
-   ssh -i testKey.pem -N -R 0.0.0.0:8890:192.168.1.1:80 ubuntu@54.80.250.133
+   ssh -i testKey.pem -N -R 0.0.0.0:8890:192.168.1.1:80 ubuntu@54.80.250.133           # Make Sure the Path to PrivateKey is Correct.
 
 5. Test from EC2 or anywhere:
    curl http://54.80.250.133:8890
@@ -21,3 +21,4 @@
 // To Run it from .bat File just put there: 
 @echo off
 start "" ssh -i testKey.pem -N -R 0.0.0.0:8890:192.168.1.1:80 ubuntu@54.80.250.133
+
