@@ -1,0 +1,23 @@
+1. Open the port in EC2 Security Group
+   - Inbound Rule: TCP, Port = 8890 or any other port, Source = Your IP (or 0.0.0.0/0 if testing)
+
+2. Edit SSH server config on EC2
+   File: /etc/ssh/sshd_config
+   Add or update these lines:
+     AllowTcpForwarding yes         # this options are commented by default
+     GatewayPorts yes				# this options are commented by defau
+
+3. Restart SSH service
+   sudo systemctl restart ssh
+   sudo systemctl daemon-reload
+
+4. From LAN side (your PC/router side), run the reverse SSH tunnel:
+   ssh -i testKey.pem -N -R 0.0.0.0:8890:192.168.1.1:80 ubuntu@54.80.250.133
+
+5. Test from EC2 or anywhere:
+   curl http://54.80.250.133:8890
+
+
+// To Run it from .bat File just put there: 
+@echo off
+start "" ssh -i testKey.pem -N -R 0.0.0.0:8890:192.168.1.1:80 ubuntu@54.80.250.133
