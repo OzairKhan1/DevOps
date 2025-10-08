@@ -1,0 +1,218 @@
+Setting up K3s (Single node Kubernetes Cluster). A very light cluster both control and data plane on same ec2/Vm
+
+
+---------- Master Node -------------------
+
+sudo apt update -y && sudo apt upgrade -y          # Update and upgrade system packages
+curl -sfL https://get.k3s.io | sh -                # Install K3s (lightweight Kubernetes)
+sudo systemctl status k3s                          # Check if K3s service is running
+hostname -I | awk '{print $1}'                     # Get master node private IP
+sudo cat /var/lib/rancher/k3s/server/node-token    # Retrieve join token for worker nodes
+sudo k3s kubectl get nodes -o wide                 # Verify cluster and node status
+172.31.25.129
+
+-------------------------------- Worker Node ----------------------------
+
+sudo apt update -y && sudo apt upgrade -y                                      # Update and upgrade system packages
+curl -sfL https://get.k3s.io | K3S_URL=https://<MASTER_PRIVATE_IP>:6443 K3S_TOKEN=<TOKEN> sh -   # Join worker node to master using IP and token
+sudo systemctl status k3s-agent                                                # Check if k3s-agent service is running
+
+K109a71caa172c8f653cfaeb450ff52b3788b837c2cfbd17bac4529ec7568045eff::server:e7dd608a615cd54675395fa3238f4afb
+------------------------- Verify (Runs on Master Node--------------------------
+
+sudo k3s kubectl get nodes -o wide     # List all nodes with details
+sudo k3s kubectl get pods -A           # List all pods across all namespaces
+
+----------------------------------- Test Deployment (Runs on Master Node ---------------------
+
+sudo k3s kubectl create deployment nginx --image=nginx --replicas=2   # Deploy nginx with 2 replicas
+sudo k3s kubectl expose deployment nginx --port=80 --type=NodePort    # Expose nginx deployment on NodePort
+sudo k3s kubectl get svc nginx -o wide                                # Get nginx service details with assigned NodePort
+
+============================================================================================================
+PORT SUMMARY (master <-> workers)
+-------------------------------------------------------------------------------
+- 6443/TCP  : Kubernetes API server (master listens; workers -> master)
+- 10250/TCP : kubelet API on each worker (master -> worker)
+- 8472/UDP  : flannel VXLAN (worker <-> worker) [if using flannel CNI]
+- 30000-32767/TCP : Kubernetes NodePort range (external service access)
+
+-------------------------------------------------------------------------------
+Till this point the Whole cluster is setup. the below section is full description for better understanding.
+
+
+----------------------------- Detail Explaination for each command --------------------------- 
+
+===============================================================================
+k3s Kubernetes Cluster (1 Master + 2 Workers) - Notepad-ready Setup
+===============================================================================
+
+INTRO
+-----
+This guide sets up a lightweight k3s Kubernetes cluster on AWS (or any cloud/VMs)
+with 1 master (control-plane) and 2 worker nodes. Commands are for Ubuntu nodes.
+Keep all nodes inside the same VPC/subnet and use internal/private IPs for node
+communication.
+
+PREREQUISITES
+-------------
+- 3 EC2 instances (or VMs): 1 master + 2 workers.
+- Ubuntu 20.04 / 22.04 recommended.
+- SSH access configured (key pair).
+- All instances in same VPC/subnet (private networking).
+- A terminal/SSH session to each instance.
+
+SECURITY GROUP RULES (recommended)
+----------------------------------
+Configure AWS security groups so only cluster nodes can talk to each other.
+
+Master SG inbound rules:
+- Port 22/TCP  -> Source: <YOUR_IP/CIDR>          # SSH admin access
+- Port 6443/TCP -> Source: Worker SG or VPC CIDR  # Kubernetes API (workers -> master)
+
+Worker SG inbound rules:
+- Port 22/TCP -> Source: <YOUR_IP/CIDR>           # SSH admin access
+- Port 10250/TCP -> Source: Master SG or Master IP # Kubelet API (master -> workers)
+- Port 8472/UDP -> Source: Worker SG (self)        # Flannel VXLAN (pod networking) [if used]
+- NodePort range (optional) 30000-32767/TCP -> Source: <YOUR_IP/CIDR>  # If you use NodePort services
+
+IMPORTANT: Do NOT open 6443 or 10250 to 0.0.0.0/0. Limit to private CIDRs or node SGs.
+
+-------------------------------------------------------------------------------
+MASTER NODE — INSTALL k3s (run on the master node as ubuntu user via SSH)
+-------------------------------------------------------------------------------
+
+# update packages
+sudo apt update -y && sudo apt upgrade -y
+Explanation: bring the system up to date.
+
+# install k3s (server mode; installs server + local agent by default)
+curl -sfL https://get.k3s.io | sh -
+Explanation: downloads and installs k3s service (server). This creates a single-node cluster.
+
+# check k3s service status
+sudo systemctl status k3s
+Explanation: confirms that k3s server is running.
+
+# get kubeconfig (optional copy for local kubectl use)
+sudo cat /etc/rancher/k3s/k3s.yaml
+Explanation: this prints kubeconfig with server address likely set to 127.0.0.1.
+
+# find the master's private IP (choose one method)
+hostname -I | awk '{print $1}'
+Explanation: prints the server's IP (use the private/internal IP for K3S_URL).
+
+# get the node token that agents need to join
+sudo cat /var/lib/rancher/k3s/server/node-token
+Explanation: copy this token value (e.g. K10xxxx...). Keep secure.
+
+# (optional) use k3s-provided kubectl
+sudo k3s kubectl get nodes -o wide
+Explanation: lists nodes (only master now).
+
+-------------------------------------------------------------------------------
+WORKER NODES — JOIN CLUSTER (run on each worker node via SSH)
+-------------------------------------------------------------------------------
+
+# update packages
+sudo apt update -y && sudo apt upgrade -y
+Explanation: update the worker system.
+
+# on each worker: run k3s agent join command (replace placeholders)
+curl -sfL https://get.k3s.io | K3S_URL=https://<MASTER_PRIVATE_IP>:6443 K3S_TOKEN=<TOKEN> sh -
+Explanation:
+- K3S_URL points to the master API server (use master private IP).
+- K3S_TOKEN is the token you retrieved from the master.
+- This installs k3s agent and registers the worker with the master.
+
+# check agent service
+sudo systemctl status k3s-agent
+Explanation: confirms the agent started.
+
+-------------------------------------------------------------------------------
+VERIFY FROM MASTER (run on master)
+-------------------------------------------------------------------------------
+
+# list nodes (use k3s kubectl to be safe)
+sudo k3s kubectl get nodes -o wide
+Explanation: shows master + worker nodes and internal IPs once agents have joined.
+
+# view pods in all namespaces (system pods)
+sudo k3s kubectl get pods -A
+Explanation: checks that CNI (flannel) and other system components are running.
+
+-------------------------------------------------------------------------------
+EXPOSE KUBECONFIG FOR LOCAL USE (optional, on master)
+-------------------------------------------------------------------------------
+
+# copy kubeconfig to your home for non-root kubectl usage (run on master)
+sudo cat /etc/rancher/k3s/k3s.yaml > /home/ubuntu/k3s.yaml
+sudo chown ubuntu:ubuntu /home/ubuntu/k3s.yaml
+Explanation: creates a copy in your home; update its server address before using from outside.
+
+# if you want to use this kubeconfig remotely from your laptop:
+- copy /home/ubuntu/k3s.yaml to your laptop (scp) and edit the 'server:' entry
+  to https://<MASTER_PUBLIC_OR_PRIVATE_IP>:6443 (use private IP if inside VPN)
+Explanation: this allows kubectl from your laptop to access the cluster.
+
+-------------------------------------------------------------------------------
+TEST DEPLOYMENT (run on master)
+-------------------------------------------------------------------------------
+
+# create a test deployment (nginx)
+sudo k3s kubectl create deployment nginx --image=nginx --replicas=2
+Explanation: deploys 2 nginx pods.
+
+# expose service via NodePort (so it is reachable on worker IPs)
+sudo k3s kubectl expose deployment nginx --port=80 --type=NodePort
+Explanation: creates a NodePort service that maps an external port to pod port 80.
+
+# show service and NodePort
+sudo k3s kubectl get svc nginx -o wide
+Explanation: note the NodePort (e.g. 30080). Access at http://<worker-public-ip>:<NodePort>
+
+-------------------------------------------------------------------------------
+TROUBLESHOOTING QUICK HITS
+-------------------------------------------------------------------------------
+
+# if worker doesn't show up on master:
+- Ensure worker can reach master on port 6443/TCP.
+- Ensure master can authenticate token value (no trailing spaces).
+- Check worker logs: sudo journalctl -u k3s-agent -b --no-pager
+
+# if pods stuck or CNI not ready:
+- sudo k3s kubectl get pods -A
+- check CNI pods (kube-system namespace) and read their logs.
+
+# check CPU/memory:
+- free -h
+- top or htop
+Low memory often breaks kube components on tiny instances.
+
+-------------------------------------------------------------------------------
+PORT SUMMARY (master <-> workers)
+-------------------------------------------------------------------------------
+- 6443/TCP  : Kubernetes API server (master listens; workers -> master)
+- 10250/TCP : kubelet API on each worker (master -> worker)
+- 8472/UDP  : flannel VXLAN (worker <-> worker) [if using flannel CNI]
+- 30000-32767/TCP : Kubernetes NodePort range (external service access)
+
+-------------------------------------------------------------------------------
+SECURITY NOTES
+-------------------------------------------------------------------------------
+- Restrict 6443 and 10250 to only node IPs or security groups (do not open to public).
+- Use private IPs inside the VPC for K3S_URL; avoid public endpoints for node join traffic.
+- Keep the node-token secret. Rotate it if compromised (reinstall or consult k3s docs).
+
+-------------------------------------------------------------------------------
+WHAT TO REPLACE BEFORE RUNNING
+-------------------------------------------------------------------------------
+- <MASTER_PRIVATE_IP>  -> the private/internal IP of the master node (e.g. 10.0.1.10)
+- <TOKEN>              -> the exact token from /var/lib/rancher/k3s/server/node-token
+- <YOUR_IP/CIDR>       -> your laptop/office IP for SSH access (e.g. 203.0.113.4/32)
+
+-------------------------------------------------------------------------------
+SAVE AS: k3s-setup-notes.txt
+-------------------------------------------------------------------------------
+
+End of file.
