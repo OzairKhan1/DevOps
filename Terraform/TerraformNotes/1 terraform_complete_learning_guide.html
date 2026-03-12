@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terraform Complete Learning Guide</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Calibri, sans-serif; background: #f0f4fb; color: #222; }
+
+  /* Sidebar */
+  .sidebar {
+    position: fixed; top: 0; left: 0; width: 270px; height: 100vh;
+    background: #1A2E4A; overflow-y: auto; padding: 0 0 40px; z-index: 100;
+    box-shadow: 3px 0 16px rgba(0,0,0,0.25);
+  }
+  .sidebar-logo {
+    background: linear-gradient(135deg, #1F4E79, #2E75B6);
+    padding: 22px 20px 18px;
+    font-size: 1.05rem; font-weight: 800; color: #fff;
+    border-bottom: 2px solid #2e4a6a;
+  }
+  .sidebar-logo span { font-size: 0.78rem; font-weight: 400; opacity: 0.75; display: block; margin-top: 3px; }
+  .level-label {
+    padding: 14px 18px 5px;
+    font-size: 0.68rem; text-transform: uppercase; letter-spacing: 2px;
+    font-weight: 700;
+  }
+  .level-label.beginner { color: #68d391; }
+  .level-label.intermediate { color: #f6ad55; }
+  .level-label.advanced { color: #fc8181; }
+  .sidebar a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 18px; color: #b0cce8; font-size: 0.87rem;
+    text-decoration: none; border-left: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .sidebar a:hover { color: #fff; background: #243d5c; border-left-color: #2E75B6; }
+  .sidebar a .num { font-size: 0.72rem; background: #2e4a6a; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 700; }
+  .sidebar a.sub { padding-left: 32px; font-size: 0.81rem; color: #7ea8cc; }
+  .sidebar a.sub:hover { color: #cde; }
+
+  /* Main */
+  .main { margin-left: 270px; padding: 40px 50px 100px; }
+
+  /* Cover */
+  .cover {
+    background: linear-gradient(135deg, #0f2942 0%, #1F4E79 50%, #1a6e8a 100%);
+    border-radius: 16px; padding: 60px 54px 50px; margin-bottom: 50px; color: #fff;
+    position: relative; overflow: hidden;
+  }
+  .cover::before {
+    content: "{ }"; position: absolute; right: 50px; top: 30px;
+    font-size: 8rem; font-weight: 900; opacity: 0.06; font-family: monospace;
+  }
+  .cover .pre-title { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 3px; color: #7eb3e0; margin-bottom: 12px; }
+  .cover h1 { font-size: 2.8rem; font-weight: 900; line-height: 1.15; margin-bottom: 14px; }
+  .cover .desc { font-size: 1.05rem; opacity: 0.82; max-width: 560px; line-height: 1.7; margin-bottom: 30px; }
+  .roadmap {
+    display: flex; gap: 0; margin-top: 10px;
+  }
+  .roadmap-step {
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+    padding: 12px 20px; font-size: 0.82rem; font-weight: 600;
+    position: relative;
+  }
+  .roadmap-step:first-child { border-radius: 8px 0 0 8px; }
+  .roadmap-step:last-child { border-radius: 0 8px 8px 0; }
+  .roadmap-step .arrow { position: absolute; right: -12px; top: 50%; transform: translateY(-50%); font-size: 1rem; z-index: 1; }
+  .roadmap-step .label { font-size: 0.68rem; opacity: 0.7; display: block; margin-bottom: 2px; }
+  .roadmap-step.b { background: rgba(104,211,145,0.2); border-color: rgba(104,211,145,0.4); }
+  .roadmap-step.i { background: rgba(246,173,85,0.2); border-color: rgba(246,173,85,0.4); }
+  .roadmap-step.a { background: rgba(252,129,129,0.2); border-color: rgba(252,129,129,0.4); }
+
+  /* Level banners */
+  .level-banner {
+    display: flex; align-items: center; gap: 14px;
+    border-radius: 10px; padding: 16px 24px; margin: 48px 0 28px;
+    font-weight: 800; font-size: 1.1rem;
+  }
+  .level-banner.beginner { background: linear-gradient(90deg, #1a4731, #1c5e3a); color: #68d391; border-left: 6px solid #38a169; }
+  .level-banner.intermediate { background: linear-gradient(90deg, #4a2f0a, #5c3a10); color: #f6ad55; border-left: 6px solid #dd6b20; }
+  .level-banner.advanced { background: linear-gradient(90deg, #4a1a1a, #5c2020); color: #fc8181; border-left: 6px solid #e53e3e; }
+  .level-banner .icon { font-size: 1.6rem; }
+  .level-banner .info { font-size: 0.8rem; font-weight: 400; opacity: 0.8; margin-top: 2px; }
+
+  /* Section card */
+  .section {
+    background: #fff; border-radius: 12px; padding: 38px 42px;
+    margin-bottom: 30px; box-shadow: 0 2px 18px rgba(30,60,110,0.08);
+  }
+  .section-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 22px; border-bottom: 3px solid #e8eef8; padding-bottom: 16px; }
+  .section-num {
+    background: linear-gradient(135deg, #1F4E79, #2E75B6); color: #fff;
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; font-weight: 900; flex-shrink: 0;
+  }
+  .section-title { font-size: 1.5rem; font-weight: 800; color: #1F4E79; }
+  .section-sub { font-size: 0.87rem; color: #2E75B6; margin-top: 3px; }
+
+  h2 { font-size: 1.08rem; font-weight: 700; color: #1F4E79; margin: 26px 0 10px; padding: 8px 14px; background: #EEF4FB; border-left: 4px solid #2E75B6; border-radius: 0 6px 6px 0; }
+  h3 { font-size: 0.97rem; font-weight: 700; color: #333; margin: 18px 0 8px; }
+  p { font-size: 0.94rem; line-height: 1.78; margin-bottom: 12px; color: #3a3a3a; }
+
+  pre {
+    background: #0d1117; color: #c9d1d9;
+    border-radius: 9px; padding: 20px 24px;
+    font-family: 'Courier New', monospace; font-size: 0.82rem; line-height: 1.68;
+    overflow-x: auto; margin: 10px 0 18px;
+    border: 1px solid #30363d; position: relative;
+  }
+  .comment { color: #8b949e; }
+  .keyword { color: #ff7b72; }
+  .string { color: #a5d6ff; }
+  .var-color { color: #ffa657; }
+
+  .note { background: #fffbf0; border-left: 5px solid #f5a623; border-radius: 0 8px 8px 0; padding: 13px 18px; font-size: 0.91rem; color: #555; margin: 14px 0 20px; line-height: 1.7; }
+  .warning { background: #fff5f5; border-left: 5px solid #e53e3e; border-radius: 0 8px 8px 0; padding: 13px 18px; font-size: 0.91rem; color: #555; margin: 14px 0 20px; line-height: 1.7; }
+  .tip { background: #f0fff4; border-left: 5px solid #38a169; border-radius: 0 8px 8px 0; padding: 13px 18px; font-size: 0.91rem; color: #3a5a3a; margin: 14px 0 20px; line-height: 1.7; }
+  .concept { background: #f8f0ff; border-left: 5px solid #805ad5; border-radius: 0 8px 8px 0; padding: 13px 18px; font-size: 0.91rem; color: #4a3a6a; margin: 14px 0 20px; line-height: 1.7; }
+
+  ul, ol { margin: 8px 0 14px 26px; }
+  li { font-size: 0.93rem; line-height: 1.85; color: #333; }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0 20px; font-size: 0.89rem; }
+  th { background: #1F4E79; color: #fff; padding: 11px 15px; text-align: left; font-weight: 600; }
+  td { padding: 10px 15px; border: 1px solid #dde; vertical-align: top; line-height: 1.65; }
+  tr:nth-child(even) td { background: #EEF4FB; }
+  td code, p code, li code { background: #eef2f7; border: 1px solid #ccd; border-radius: 4px; padding: 1px 6px; font-family: 'Courier New', monospace; font-size: 0.82rem; color: #1a1a2e; }
+
+  .flow {
+    display: flex; gap: 0; align-items: center; margin: 16px 0; flex-wrap: wrap;
+  }
+  .flow-step {
+    background: #EEF4FB; border: 2px solid #2E75B6;
+    padding: 10px 18px; border-radius: 8px; font-size: 0.85rem;
+    font-weight: 700; color: #1F4E79; text-align: center;
+  }
+  .flow-arrow { font-size: 1.4rem; color: #2E75B6; padding: 0 8px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .card { background: #f7faff; border: 1px solid #ccd6ee; border-radius: 9px; padding: 16px 18px; }
+  .card h4 { font-size: 0.9rem; font-weight: 700; color: #1F4E79; margin-bottom: 6px; }
+  .card p { font-size: 0.86rem; margin: 0; }
+
+  .prod-label { display: inline-block; background: #e53e3e; color: #fff; border-radius: 4px; padding: 1px 8px; font-size: 0.7rem; font-weight: 700; margin-left: 8px; vertical-align: middle; }
+  .new-label { display: inline-block; background: #38a169; color: #fff; border-radius: 4px; padding: 1px 8px; font-size: 0.7rem; font-weight: 700; margin-left: 8px; vertical-align: middle; }
+
+  .step-box {
+    border: 2px solid #e8eef8; border-radius: 10px; padding: 18px 22px; margin: 14px 0;
+    position: relative;
+  }
+  .step-box .step-label {
+    position: absolute; top: -12px; left: 16px;
+    background: #2E75B6; color: #fff; padding: 2px 12px;
+    border-radius: 12px; font-size: 0.75rem; font-weight: 700;
+  }
+
+  .footer { text-align: center; color: #888; font-size: 0.85rem; margin-top: 50px; padding-top: 20px; border-top: 3px solid #2E75B6; }
+
+  @media print {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 20px; }
+    .section { box-shadow: none; border: 1px solid #ddd; page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-logo">
+    🏗️ Terraform Guide
+    <span>Beginner → Production</span>
+  </div>
+
+  <div class="level-label beginner">🟢 Beginner</div>
+  <a href="#what-is-terraform"><span class="num">1</span> What is Terraform?</a>
+  <a href="#how-it-works"><span class="num">2</span> How Terraform Works</a>
+  <a href="#installation"><span class="num">3</span> Installation & Setup</a>
+  <a href="#first-resource"><span class="num">4</span> Your First Resource</a>
+  <a href="#variables"><span class="num">5</span> Variables & Outputs</a>
+  <a href="#datasources"><span class="num">6</span> Data Sources</a>
+
+  <div class="level-label intermediate">🟡 Intermediate</div>
+  <a href="#meta-arguments"><span class="num">7</span> Meta-Arguments</a>
+  <a href="#provisioners"><span class="num">8</span> Provisioners</a>
+  <a href="#workspaces"><span class="num">9</span> Workspaces</a>
+  <a href="#modules"><span class="num">10</span> Modules</a>
+
+  <div class="level-label advanced">🔴 Advanced / Production</div>
+  <a href="#backends"><span class="num">11</span> Backends & Remote State</a>
+  <a href="#state-commands"><span class="num">12</span> State Commands</a>
+  <a href="#best-practices"><span class="num">13</span> Best Practices</a>
+  <a href="#cicd"><span class="num">14</span> CI/CD Integration</a>
+</div>
+
+<!-- Main Content -->
+<div class="main">
+
+  <!-- Cover -->
+  <div class="cover">
+    <div class="pre-title">Complete Learning Guide</div>
+    <h1>Terraform from Zero<br>to Production</h1>
+    <div class="desc">A structured, step-by-step guide designed for students and engineers. Start from the very basics and progressively build up to real-world production infrastructure skills.</div>
+    <div class="roadmap">
+      <div class="roadmap-step b">
+        <span class="label">Stage 1</span>
+        🟢 Beginner
+        <span class="arrow">›</span>
+      </div>
+      <div class="roadmap-step i">
+        <span class="label">Stage 2</span>
+        🟡 Intermediate
+        <span class="arrow">›</span>
+      </div>
+      <div class="roadmap-step a">
+        <span class="label">Stage 3</span>
+        🔴 Production
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ BEGINNER ═══════════════ -->
+  <div class="level-banner beginner">
+    <div class="icon">🟢</div>
+    <div>
+      STAGE 1 — BEGINNER
+      <div class="info">Learn what Terraform is, how it thinks, and write your very first infrastructure code</div>
+    </div>
+  </div>
+
+  <!-- 1. What is Terraform -->
+  <div class="section" id="what-is-terraform">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <div>
+        <div class="section-title">What is Terraform?</div>
+        <div class="section-sub">Understanding Infrastructure as Code (IaC)</div>
+      </div>
+    </div>
+
+    <p>Terraform is an open-source <strong>Infrastructure as Code (IaC)</strong> tool created by HashiCorp. It lets you define, provision, and manage cloud infrastructure using simple configuration files — instead of clicking around in a cloud console manually.</p>
+
+    <div class="concept">🧠 <strong>Think of it this way:</strong> Just like a developer writes code to build an application, a DevOps/Cloud engineer writes Terraform code to build infrastructure (servers, databases, networks, etc.). That code can be versioned, reviewed, and reused — exactly like software.</div>
+
+    <h2>Why Terraform? — The Problem It Solves</h2>
+    <p>Before IaC, teams created infrastructure manually through cloud consoles. This caused:</p>
+    <ul>
+      <li><strong>No repeatability</strong> — "It works on my account" problems</li>
+      <li><strong>No version history</strong> — You couldn't see who changed what, when</li>
+      <li><strong>Slow onboarding</strong> — New environments took days to set up</li>
+      <li><strong>Human error</strong> — A wrong click could destroy production</li>
+    </ul>
+    <p>Terraform solves all of these. Your entire infrastructure is described in <code>.tf</code> files that live in Git.</p>
+
+    <h2>Terraform vs Other Tools</h2>
+    <table>
+      <thead><tr><th>Tool</th><th>Type</th><th>Best For</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Terraform</strong></td><td>IaC — Provisioning</td><td>Creating and managing cloud resources (multi-cloud)</td></tr>
+        <tr><td>AWS CloudFormation</td><td>IaC — AWS only</td><td>AWS-only teams who want native integration</td></tr>
+        <tr><td>Ansible</td><td>Configuration Management</td><td>Configuring software INSIDE servers</td></tr>
+        <tr><td>Pulumi</td><td>IaC — Code-first</td><td>Teams that prefer Python/TypeScript over HCL</td></tr>
+      </tbody>
+    </table>
+
+    <div class="tip">💡 <strong>Key Point:</strong> Terraform is <strong>cloud-agnostic</strong>. The same workflow works for AWS, Azure, GCP, and 1000+ providers. This is its biggest advantage over tools like CloudFormation.</div>
+  </div>
+
+  <!-- 2. How Terraform Works -->
+  <div class="section" id="how-it-works">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <div>
+        <div class="section-title">How Terraform Works</div>
+        <div class="section-sub">The core workflow and key concepts every user must know</div>
+      </div>
+    </div>
+
+    <h2>The 3-Step Core Workflow</h2>
+    <div class="flow">
+      <div class="flow-step">✍️ Write<br><small>.tf files</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">📋 Plan<br><small>Preview changes</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">🚀 Apply<br><small>Create infra</small></div>
+    </div>
+
+    <pre><span class="comment"># Step 1: Write your config in .tf files (next sections)</span>
+
+<span class="comment"># Step 2: Preview what Terraform WILL do — no changes made yet</span>
+terraform plan
+
+<span class="comment"># Step 3: Actually create/modify the infrastructure</span>
+terraform apply
+
+<span class="comment"># To destroy everything managed by this config</span>
+terraform destroy</pre>
+
+    <h2>Key Concepts You Must Understand</h2>
+
+    <div class="grid2">
+      <div class="card">
+        <h4>📄 Configuration Files (.tf)</h4>
+        <p>Files where you write infrastructure code in HCL (HashiCorp Configuration Language). Terraform reads all <code>.tf</code> files in a directory.</p>
+      </div>
+      <div class="card">
+        <h4>🗂️ State File (terraform.tfstate)</h4>
+        <p>Terraform's memory. It tracks what resources it has created. <strong>Never delete or edit this manually.</strong></p>
+      </div>
+      <div class="card">
+        <h4>🔌 Providers</h4>
+        <p>Plugins that let Terraform talk to cloud platforms (AWS, Azure, GCP). Think of them as drivers for your cloud.</p>
+      </div>
+      <div class="card">
+        <h4>📦 Resources</h4>
+        <p>The actual infrastructure objects Terraform creates — EC2 instances, S3 buckets, VPCs, databases, etc.</p>
+      </div>
+    </div>
+
+    <h2>How Terraform Knows What to Change</h2>
+    <p>Terraform compares 3 things every time you run <code>plan</code>:</p>
+    <div class="flow">
+      <div class="flow-step">📄 Your Code<br><small>desired state</small></div>
+      <div class="flow-arrow">vs</div>
+      <div class="flow-step">🗂️ State File<br><small>last known state</small></div>
+      <div class="flow-arrow">vs</div>
+      <div class="flow-step">☁️ Real Cloud<br><small>actual state</small></div>
+    </div>
+    <p>If they differ, Terraform shows you a plan of exactly what it will create, modify, or destroy.</p>
+  </div>
+
+  <!-- 3. Installation & Setup -->
+  <div class="section" id="installation">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <div>
+        <div class="section-title">Installation & Setup</div>
+        <div class="section-sub">Get Terraform running on your machine</div>
+      </div>
+    </div>
+
+    <h2>Install Terraform</h2>
+    <pre><span class="comment"># macOS (via Homebrew)</span>
+brew tap hashicorp/tap
+brew install hashicorp/tap/terraform
+
+<span class="comment"># Ubuntu / Debian Linux</span>
+wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install terraform
+
+<span class="comment"># Windows (via Chocolatey)</span>
+choco install terraform
+
+<span class="comment"># Verify installation</span>
+terraform -version
+<span class="comment"># Output: Terraform v1.6.3</span></pre>
+
+    <h2>Configure AWS Provider (Most Common)</h2>
+    <pre><span class="comment"># Install AWS CLI and configure credentials</span>
+aws configure
+<span class="comment"># Enter: AWS Access Key ID, Secret Key, Region, Output format</span>
+
+<span class="comment"># OR use environment variables (recommended for CI/CD)</span>
+export AWS_ACCESS_KEY_ID="your-access-key"
+export AWS_SECRET_ACCESS_KEY="your-secret-key"
+export AWS_DEFAULT_REGION="us-east-1"</pre>
+
+    <h2>Project File Structure</h2>
+    <pre><span class="comment"># Recommended file layout for any Terraform project</span>
+my-project/
+├── main.tf          <span class="comment"># Core resources go here</span>
+├── variables.tf     <span class="comment"># Input variable declarations</span>
+├── outputs.tf       <span class="comment"># Output value declarations</span>
+├── versions.tf      <span class="comment"># Terraform & provider version requirements</span>
+├── terraform.tfvars <span class="comment"># Actual variable values (don't commit secrets!)</span>
+└── .gitignore       <span class="comment"># Exclude .tfstate, .tfvars with secrets</span></pre>
+
+    <h2>Essential CLI Commands for Beginners</h2>
+    <table>
+      <thead><tr><th>Command</th><th>What It Does</th><th>When to Use</th></tr></thead>
+      <tbody>
+        <tr><td><code>terraform init</code></td><td>Downloads providers and sets up backend</td><td>Always run first, or after adding a new provider</td></tr>
+        <tr><td><code>terraform fmt</code></td><td>Auto-formats your .tf files</td><td>Before committing code</td></tr>
+        <tr><td><code>terraform validate</code></td><td>Checks for syntax errors</td><td>After writing new code</td></tr>
+        <tr><td><code>terraform plan</code></td><td>Shows what WILL happen — no changes yet</td><td>Before every apply</td></tr>
+        <tr><td><code>terraform apply</code></td><td>Creates/updates infrastructure</td><td>When plan looks correct</td></tr>
+        <tr><td><code>terraform destroy</code></td><td>Destroys all managed resources</td><td>Cleanup dev environments</td></tr>
+      </tbody>
+    </table>
+    <div class="warning">⚠️ <strong>Golden Rule:</strong> ALWAYS run <code>terraform plan</code> before <code>terraform apply</code>. Read the plan output carefully. Never blindly apply — especially in production.</div>
+  </div>
+
+  <!-- 4. First Resource -->
+  <div class="section" id="first-resource">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <div>
+        <div class="section-title">Your First Resource</div>
+        <div class="section-sub">Write and deploy real infrastructure step by step</div>
+      </div>
+    </div>
+
+    <h2>Anatomy of a Resource Block</h2>
+    <pre><span class="comment"># resource "PROVIDER_TYPE" "LOCAL_NAME" { ... }</span>
+<span class="comment">#          ↑ what to create     ↑ your name for it (used in references)</span>
+
+resource <span class="string">"aws_instance"</span> <span class="string">"my_server"</span> {
+  ami           = <span class="string">"ami-0c55b159cbfafe1f0"</span>  <span class="comment"># Amazon Machine Image ID</span>
+  instance_type = <span class="string">"t2.micro"</span>              <span class="comment"># Size of the server</span>
+
+  tags = {
+    Name = <span class="string">"MyFirstServer"</span>
+  }
+}</pre>
+
+    <h2>Step-by-Step: Create an EC2 Instance</h2>
+
+    <div class="step-box">
+      <div class="step-label">Step 1 — versions.tf</div>
+      <pre style="margin:0">terraform {
+  required_version = <span class="string">"~&gt; 1.6"</span>
+  required_providers {
+    aws = {
+      source  = <span class="string">"hashicorp/aws"</span>
+      version = <span class="string">"~&gt; 5.0"</span>
+    }
+  }
+}</pre>
+    </div>
+
+    <div class="step-box">
+      <div class="step-label">Step 2 — main.tf</div>
+      <pre style="margin:0"><span class="comment"># Configure the provider</span>
+provider <span class="string">"aws"</span> {
+  region = <span class="string">"us-east-1"</span>
+}
+
+<span class="comment"># Create a Security Group</span>
+resource <span class="string">"aws_security_group"</span> <span class="string">"web_sg"</span> {
+  name        = <span class="string">"web-security-group"</span>
+  description = <span class="string">"Allow HTTP and SSH"</span>
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = <span class="string">"tcp"</span>
+    cidr_blocks = [<span class="string">"0.0.0.0/0"</span>]
+  }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = <span class="string">"tcp"</span>
+    cidr_blocks = [<span class="string">"0.0.0.0/0"</span>]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = <span class="string">"-1"</span>
+    cidr_blocks = [<span class="string">"0.0.0.0/0"</span>]
+  }
+}
+
+<span class="comment"># Create the EC2 Instance</span>
+resource <span class="string">"aws_instance"</span> <span class="string">"web_server"</span> {
+  ami                    = <span class="string">"ami-0c55b159cbfafe1f0"</span>
+  instance_type          = <span class="string">"t2.micro"</span>
+  vpc_security_group_ids = [aws_security_group.web_sg.id]  <span class="comment"># Reference SG above</span>
+
+  tags = {
+    Name = <span class="string">"WebServer"</span>
+  }
+}</pre>
+    </div>
+
+    <div class="step-box">
+      <div class="step-label">Step 3 — Run it</div>
+      <pre style="margin:0"><span class="comment"># Initialize (downloads AWS provider)</span>
+terraform init
+
+<span class="comment"># Check for errors</span>
+terraform validate
+
+<span class="comment"># Preview — Terraform will show: Plan: 2 to add</span>
+terraform plan
+
+<span class="comment"># Create the resources</span>
+terraform apply
+<span class="comment"># Type 'yes' when prompted</span></pre>
+    </div>
+
+    <div class="tip">💡 <strong>Notice:</strong> The EC2 instance references <code>aws_security_group.web_sg.id</code> — Terraform automatically detects this dependency and creates the security group FIRST. This is called an <strong>implicit dependency</strong>.</div>
+  </div>
+
+  <!-- 5. Variables & Outputs -->
+  <div class="section" id="variables">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <div>
+        <div class="section-title">Variables & Outputs</div>
+        <div class="section-sub">Make your code dynamic, reusable, and configurable</div>
+      </div>
+    </div>
+
+    <p>Hard-coding values like AMI IDs and instance types is fine for learning, but in real projects you need <strong>variables</strong> so the same code works for dev, staging, and prod without any changes.</p>
+
+    <h2>Input Variables</h2>
+    <pre><span class="comment"># variables.tf</span>
+variable <span class="string">"instance_type"</span> {
+  type        = string
+  description = <span class="string">"EC2 instance type"</span>
+  default     = <span class="string">"t2.micro"</span>  <span class="comment"># Optional default value</span>
+}
+
+variable <span class="string">"environment"</span> {
+  type        = string
+  description = <span class="string">"Deployment environment (dev/staging/prod)"</span>
+  <span class="comment"># No default = REQUIRED — Terraform will ask for it</span>
+}
+
+variable <span class="string">"allowed_ports"</span> {
+  type    = list(number)
+  default = [80, 443, 22]
+}
+
+variable <span class="string">"tags"</span> {
+  type    = map(string)
+  default = {
+    Team    = <span class="string">"DevOps"</span>
+    Project = <span class="string">"MyApp"</span>
+  }
+}</pre>
+
+    <pre><span class="comment"># main.tf — use variables with var.</span>
+resource <span class="string">"aws_instance"</span> <span class="string">"web"</span> {
+  ami           = <span class="string">"ami-0c55b159cbfafe1f0"</span>
+  instance_type = var.instance_type     <span class="comment"># ← using variable</span>
+
+  tags = merge(var.tags, {
+    Name        = <span class="string">"${var.environment}-web-server"</span>  <span class="comment"># ← string interpolation</span>
+    Environment = var.environment
+  })
+}</pre>
+
+    <h2>Passing Variable Values</h2>
+    <pre><span class="comment"># Option 1: terraform.tfvars file (auto-loaded)</span>
+instance_type = <span class="string">"t3.medium"</span>
+environment   = <span class="string">"dev"</span>
+
+<span class="comment"># Option 2: Named var file</span>
+terraform apply -var-file=<span class="string">"dev.tfvars"</span>
+
+<span class="comment"># Option 3: Command line flag</span>
+terraform apply -var=<span class="string">"environment=dev"</span> -var=<span class="string">"instance_type=t3.micro"</span>
+
+<span class="comment"># Option 4: Environment variable (prefix with TF_VAR_)</span>
+export TF_VAR_environment=<span class="string">"dev"</span>
+terraform apply</pre>
+
+    <h2>Variable Validation (Best Practice)</h2>
+    <pre>variable <span class="string">"environment"</span> {
+  type = string
+
+  validation {
+    condition     = contains([<span class="string">"dev"</span>, <span class="string">"staging"</span>, <span class="string">"prod"</span>], var.environment)
+    error_message = <span class="string">"Environment must be dev, staging, or prod."</span>
+  }
+}</pre>
+
+    <h2>Sensitive Variables — Never Log Secrets</h2>
+    <pre>variable <span class="string">"db_password"</span> {
+  type      = string
+  sensitive = true  <span class="comment"># Terraform hides this in all plan/apply output</span>
+}</pre>
+
+    <h2>Output Values</h2>
+    <p>Outputs display useful information after apply — like the IP address of your new server. They can also be read by other Terraform configurations.</p>
+    <pre><span class="comment"># outputs.tf</span>
+output <span class="string">"server_public_ip"</span> {
+  description = <span class="string">"Public IP of the web server"</span>
+  value       = aws_instance.web.public_ip
+}
+
+output <span class="string">"server_id"</span> {
+  value = aws_instance.web.id
+}
+
+output <span class="string">"db_password"</span> {
+  value     = var.db_password
+  sensitive = true  <span class="comment"># Hide in output logs</span>
+}</pre>
+    <pre><span class="comment"># View outputs after apply</span>
+terraform output
+terraform output server_public_ip</pre>
+
+    <h2>Locals — Computed/Derived Values</h2>
+    <pre>locals {
+  name_prefix  = <span class="string">"${var.project}-${var.environment}"</span>
+  is_prod      = var.environment == <span class="string">"prod"</span>
+  replica_count = local.is_prod ? 3 : 1
+
+  common_tags = {
+    Environment = var.environment
+    ManagedBy   = <span class="string">"terraform"</span>
+  }
+}
+
+resource <span class="string">"aws_instance"</span> <span class="string">"app"</span> {
+  instance_type = local.is_prod ? <span class="string">"t3.large"</span> : <span class="string">"t3.micro"</span>
+
+  tags = merge(local.common_tags, {
+    Name = <span class="string">"${local.name_prefix}-app"</span>
+  })
+}</pre>
+  </div>
+
+  <!-- 6. Data Sources -->
+  <div class="section" id="datasources">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <div>
+        <div class="section-title">Data Sources</div>
+        <div class="section-sub">Read existing infrastructure without managing it</div>
+      </div>
+    </div>
+
+    <p>Data sources let Terraform <strong>fetch information</strong> from your cloud provider or existing infrastructure — without creating or managing those resources. Use them to reference things that already exist.</p>
+
+    <div class="concept">🧠 <strong>Analogy:</strong> A <code>resource</code> block is like building a new house. A <code>data</code> block is like looking up the address of a house that already exists so you can reference it.</div>
+
+    <pre><span class="comment"># Always fetch the LATEST Amazon Linux AMI — no more hard-coded AMI IDs!</span>
+data <span class="string">"aws_ami"</span> <span class="string">"amazon_linux"</span> {
+  most_recent = true
+  owners      = [<span class="string">"amazon"</span>]
+
+  filter {
+    name   = <span class="string">"name"</span>
+    values = [<span class="string">"amzn2-ami-hvm-*-x86_64-gp2"</span>]
+  }
+}
+
+resource <span class="string">"aws_instance"</span> <span class="string">"web"</span> {
+  ami           = data.aws_ami.amazon_linux.id  <span class="comment"># ← always latest</span>
+  instance_type = <span class="string">"t3.micro"</span>
+}</pre>
+
+    <pre><span class="comment"># Fetch an existing VPC (not managed by this config)</span>
+data <span class="string">"aws_vpc"</span> <span class="string">"main"</span> {
+  filter {
+    name   = <span class="string">"tag:Name"</span>
+    values = [<span class="string">"production-vpc"</span>]
+  }
+}
+
+<span class="comment"># Use it to place resources inside that VPC</span>
+resource <span class="string">"aws_subnet"</span> <span class="string">"app"</span> {
+  vpc_id     = data.aws_vpc.main.id
+  cidr_block = <span class="string">"10.0.5.0/24"</span>
+}</pre>
+
+    <pre><span class="comment"># Fetch current AWS account and region info</span>
+data <span class="string">"aws_caller_identity"</span> <span class="string">"current"</span> {}
+data <span class="string">"aws_region"</span> <span class="string">"current"</span> {}
+
+output <span class="string">"account_id"</span> { value = data.aws_caller_identity.current.account_id }
+output <span class="string">"region"</span>     { value = data.aws_region.current.name }</pre>
+
+    <pre><span class="comment"># Fetch a secret from AWS Secrets Manager</span>
+data <span class="string">"aws_secretsmanager_secret_version"</span> <span class="string">"db"</span> {
+  secret_id = <span class="string">"prod/myapp/db-password"</span>
+}
+
+<span class="comment"># Use the secret value — never hard-code passwords!</span>
+resource <span class="string">"aws_db_instance"</span> <span class="string">"main"</span> {
+  password = data.aws_secretsmanager_secret_version.db.secret_string
+}</pre>
+  </div>
+
+  <!-- ═══════════════ INTERMEDIATE ═══════════════ -->
+  <div class="level-banner intermediate">
+    <div class="icon">🟡</div>
+    <div>
+      STAGE 2 — INTERMEDIATE
+      <div class="info">Add power to your configs with meta-arguments, provisioners, workspaces, and reusable modules</div>
+    </div>
+  </div>
+
+  <!-- 7. Meta-Arguments -->
+  <div class="section" id="meta-arguments">
+    <div class="section-header">
+      <div class="section-num">7</div>
+      <div>
+        <div class="section-title">Meta-Arguments</div>
+        <div class="section-sub">Special built-in arguments that control resource behavior</div>
+      </div>
+    </div>
+
+    <p>Meta-arguments are special arguments available on <strong>every</strong> resource — regardless of provider. They control HOW a resource behaves, not what it creates.</p>
+
+    <h2>depends_on — Explicit Dependencies</h2>
+    <p>Terraform normally figures out dependencies automatically. Use <code>depends_on</code> only when it can't — e.g., a hidden dependency not visible in code.</p>
+    <pre>resource <span class="string">"aws_s3_bucket"</span> <span class="string">"app_data"</span> {
+  bucket = <span class="string">"my-app-data"</span>
+}
+
+resource <span class="string">"aws_instance"</span> <span class="string">"app"</span> {
+  ami           = data.aws_ami.amazon_linux.id
+  instance_type = <span class="string">"t3.micro"</span>
+
+  <span class="comment"># App needs S3 to exist but doesn't reference it directly</span>
+  depends_on = [aws_s3_bucket.app_data]
+}</pre>
+
+    <h2>count — Create Multiple Identical Resources</h2>
+    <pre><span class="comment"># Create 3 EC2 instances</span>
+resource <span class="string">"aws_instance"</span> <span class="string">"workers"</span> {
+  count         = 3
+  ami           = data.aws_ami.amazon_linux.id
+  instance_type = <span class="string">"t3.micro"</span>
+
+  tags = {
+    Name = <span class="string">"Worker-${count.index + 1}"</span>  <span class="comment"># Worker-1, Worker-2, Worker-3</span>
+  }
+}
+
+<span class="comment"># Access by index</span>
+output <span class="string">"worker_ips"</span> {
+  value = aws_instance.workers[*].public_ip  <span class="comment"># All IPs</span>
+}</pre>
+
+    <h2>for_each — Create Resources from a Map or Set</h2>
+    <h3> There is a dedicated Section for Each with all it's use case and common Confuction</h3>
+    <p>Better than <code>count</code> when each resource has a unique identity. Adding/removing an item only affects that specific resource — not others.</p>
+    <pre><span class="comment"># Create S3 buckets for each environment</span>
+resource <span class="string">"aws_s3_bucket"</span> <span class="string">"env_buckets"</span> {
+  for_each = toset([<span class="string">"dev"</span>, <span class="string">"staging"</span>, <span class="string">"prod"</span>])
+  bucket   = <span class="string">"myapp-${each.key}-data"</span>
+}
+
+<span class="comment"># Create servers with different sizes using a map</span>
+resource <span class="string">"aws_instance"</span> <span class="string">"servers"</span> {
+  for_each = {
+    web = <span class="string">"t3.small"</span>
+    app = <span class="string">"t3.medium"</span>
+    db  = <span class="string">"t3.large"</span>
+  }
+
+  ami           = data.aws_ami.amazon_linux.id
+  instance_type = each.value   <span class="comment"># t3.small / t3.medium / t3.large</span>
+
+  tags = { Name = each.key }   <span class="comment"># web / app / db</span>
+}
+
+<span class="comment"># Access a specific instance</span>
+output <span class="string">"web_ip"</span> { value = aws_instance.servers[<span class="string">"web"</span>].public_ip }</pre>
+
+    <h2>provider — Select Alternate Provider</h2>
+    <pre><span class="comment"># Deploy to two AWS regions simultaneously</span>
+provider <span class="string">"aws"</span> { region = <span class="string">"us-east-1"</span> }
+provider <span class="string">"aws"</span> { alias = <span class="string">"west"</span>; region = <span class="string">"us-west-2"</span> }
+
+resource <span class="string">"aws_instance"</span> <span class="string">"east"</span> {
+  ami           = <span class="string">"ami-0c55b159cbfafe1f0"</span>
+  instance_type = <span class="string">"t3.micro"</span>
+  <span class="comment"># Uses default provider (us-east-1)</span>
+}
+
+resource <span class="string">"aws_instance"</span> <span class="string">"west"</span> {
+  provider      = aws.west             <span class="comment"># ← explicitly use alias</span>
+  ami           = <span class="string">"ami-09b4b74c"</span>
+  instance_type = <span class="string">"t3.micro"</span>
+}</pre>
+
+    <h2>lifecycle — Control Create/Update/Destroy</h2>
+    <pre><span class="comment"># Zero-downtime replacement</span>
+resource <span class="string">"aws_instance"</span> <span class="string">"web"</span> {
+  ami           = data.aws_ami.amazon_linux.id
+  instance_type = <span class="string">"t3.medium"</span>
+
+  lifecycle {
+    create_before_destroy = true   <span class="comment"># New instance created BEFORE old is destroyed</span>
+  }
+}
+
+<span class="comment"># Protect critical database from accidental destruction</span>
+resource <span class="string">"aws_db_instance"</span> <span class="string">"prod"</span> {
+  identifier     = <span class="string">"prod-db"</span>
+  engine         = <span class="string">"postgres"</span>
+  instance_class = <span class="string">"db.r5.large"</span>
+
+  lifecycle {
+    prevent_destroy = true         <span class="comment"># terraform destroy will throw an ERROR</span>
+    ignore_changes  = [password]   <span class="comment"># Ignore password rotations done externally</span>
+  }
+}
+
+<span class="comment"># force replacement when a dependency changes (Terraform v1.2+)</span>
+resource <span class="string">"aws_autoscaling_group"</span> <span class="string">"asg"</span> {
+  lifecycle {
+    replace_triggered_by = [aws_launch_template.app]
+  }
+}</pre>
+  </div>
+
+  <!-- 8. Provisioners -->
+  <div class="section" id="provisioners">
+    <div class="section-header">
+      <div class="section-num">8</div>
+      <div>
+        <div class="section-title">Provisioners</div>
+        <div class="section-sub">Run scripts during resource creation or destruction</div>
+      </div>
+    </div>
+
+    <p>Provisioners execute scripts either locally on your machine or remotely on a created resource. They're used to bootstrap software after a server is created.</p>
+
+    <div class="warning">⚠️ <strong>Important:</strong> Provisioners are a <em>last resort</em>. If a provisioner fails, Terraform marks the resource as <strong>tainted</strong> (to be destroyed and recreated on next apply). Always prefer <code>user_data</code> for EC2 bootstrapping when possible.</div>
+
+    <h2>remote-exec — Run Commands ON the Server</h2>
+    <pre>resource <span class="string">"aws_instance"</span> <span class="string">"web"</span> {
+  ami           = data.aws_ami.amazon_linux.id
+  instance_type = <span class="string">"t3.micro"</span>
+  key_name      = <span class="string">"my-keypair"</span>
+
+  <span class="comment"># SSH connection details</span>
+  connection {
+    type        = <span class="string">"ssh"</span>
+    user        = <span class="string">"ec2-user"</span>
+    private_key = file(<span class="string">"~/.ssh/id_rsa"</span>)
+    host        = self.public_ip
+  }
+
+  <span class="comment"># Commands to run on the server after it starts</span>
+  provisioner <span class="string">"remote-exec"</span> {
+    inline = [
+      <span class="string">"sudo yum update -y"</span>,
+      <span class="string">"sudo yum install -y nginx"</span>,
+      <span class="string">"sudo systemctl start nginx"</span>,
+    ]
+  }
+}</pre>
+
+    <h2>local-exec — Run Commands on YOUR Machine</h2>
+    <pre>resource <span class="string">"aws_instance"</span> <span class="string">"app"</span> {
+  ami           = data.aws_ami.amazon_linux.id
+  instance_type = <span class="string">"t3.micro"</span>
+
+  <span class="comment"># Runs LOCALLY after the instance is created</span>
+  provisioner <span class="string">"local-exec"</span> {
+    command = <span class="string">"echo 'Server created: ${self.public_ip}' >> servers.txt"</span>
+  }
+
+  <span class="comment"># Trigger Ansible after creation</span>
+  provisioner <span class="string">"local-exec"</span> {
+    command = <span class="string">"ansible-playbook -i '${self.public_ip},' playbook.yml"</span>
+  }
+
+  <span class="comment"># Run on DESTROY</span>
+  provisioner <span class="string">"local-exec"</span> {
+    when    = destroy
+    command = <span class="string">"echo 'Server ${self.id} destroyed'"</span>
+  }
+}</pre>
+
+    <h2>user_data — Preferred Alternative for EC2</h2>
+    <pre><span class="comment"># Better than remote-exec for EC2 bootstrapping</span>
+<span class="comment"># Runs automatically on first boot — no SSH needed</span>
+resource <span class="string">"aws_instance"</span> <span class="string">"web"</span> {
+  ami           = data.aws_ami.amazon_linux.id
+  instance_type = <span class="string">"t3.micro"</span>
+
+  user_data = base64encode(<span class="string">&lt;&lt;-EOF
+    #!/bin/bash
+    yum update -y
+    yum install -y nginx
+    systemctl start nginx
+    systemctl enable nginx
+  EOF</span>)
+}</pre>
+  </div>
+
+  <!-- 9. Workspaces -->
+  <div class="section" id="workspaces">
+    <div class="section-header">
+      <div class="section-num">9</div>
+      <div>
+        <div class="section-title">Workspaces</div>
+        <div class="section-sub">Manage multiple environments from one configuration</div>
+      </div>
+    </div>
+
+    <p>Workspaces let you create multiple separate state files from a single Terraform configuration. Perfect for managing dev, staging, and prod without duplicating code.</p>
+
+    <div class="concept">🧠 <strong>Think of workspaces like Git branches</strong> — same codebase, different isolated states. Your code stays the same, but dev and prod have their own independent resources.</div>
+
+    <h2>Workspace Commands</h2>
+    <pre><span class="comment"># List all workspaces (* marks current)</span>
+terraform workspace list
+<span class="comment"># * default
+#   dev
+#   staging
+#   prod</span>
+
+<span class="comment"># Create a new workspace</span>
+terraform workspace new dev
+terraform workspace new staging
+terraform workspace new prod
+
+<span class="comment"># Switch to a workspace</span>
+terraform workspace select prod
+
+<span class="comment"># Show current workspace</span>
+terraform workspace show</pre>
+
+    <h2>Use Workspace Name in Configuration</h2>
+    <pre><span class="comment"># main.tf — different config per workspace</span>
+locals {
+  workspace_config = {
+    dev = {
+      instance_type = <span class="string">"t3.micro"</span>
+      instance_count = 1
+    }
+    staging = {
+      instance_type = <span class="string">"t3.small"</span>
+      instance_count = 2
+    }
+    prod = {
+      instance_type = <span class="string">"t3.large"</span>
+      instance_count = 5
+    }
+  }
+
+  <span class="comment"># terraform.workspace = "dev", "staging", or "prod"</span>
+  config = local.workspace_config[terraform.workspace]
+}
+
+resource <span class="string">"aws_instance"</span> <span class="string">"app"</span> {
+  count         = local.config.instance_count
+  ami           = data.aws_ami.amazon_linux.id
+  instance_type = local.config.instance_type
+
+  tags = {
+    Name        = <span class="string">"${terraform.workspace}-app-${count.index + 1}"</span>
+    Environment = terraform.workspace
+  }
+}</pre>
+
+    <pre><span class="comment"># Deploy to dev</span>
+terraform workspace select dev
+terraform apply
+
+<span class="comment"># Deploy to prod (completely separate state)</span>
+terraform workspace select prod
+terraform apply</pre>
+
+    <div class="warning">⚠️ <strong>Limitation:</strong> Workspaces share the same backend and provider credentials. For strong isolation (different AWS accounts per environment), use separate root modules or separate backend configurations instead.</div>
+  </div>
+
+  <!-- 10. Modules -->
+  <div class="section" id="modules">
+    <div class="section-header">
+      <div class="section-num">10</div>
+      <div>
+        <div class="section-title">Modules</div>
+        <div class="section-sub">Package and reuse Terraform configurations across projects</div>
+      </div>
+    </div>
+
+    <p>A module is simply a <strong>folder containing .tf files</strong>. You've already been writing modules — your project directory is the <em>root module</em>. Child modules are reusable components you call from the root.</p>
+
+    <div class="concept">🧠 <strong>Think of modules like functions in programming.</strong> Instead of copy-pasting the same EC2 + security group code into 10 projects, you write it once as a module and call it everywhere. Change it once → all projects benefit.</div>
+
+    <h2>Creating Your First Module</h2>
+    <pre><span class="comment"># Folder structure</span>
+project/
+├── main.tf               <span class="comment"># Root module — calls child modules</span>
+├── variables.tf
+├── outputs.tf
+└── modules/
+    └── web-server/       <span class="comment"># ← This is your module</span>
+        ├── main.tf
+        ├── variables.tf
+        └── outputs.tf</pre>
+
+    <pre><span class="comment"># modules/web-server/variables.tf</span>
+variable <span class="string">"instance_type"</span> { type = string; default = <span class="string">"t3.micro"</span> }
+variable <span class="string">"environment"</span>   { type = string }
+variable <span class="string">"name"</span>          { type = string }</pre>
+
+    <pre><span class="comment"># modules/web-server/main.tf</span>
+resource <span class="string">"aws_instance"</span> <span class="string">"this"</span> {
+  ami           = data.aws_ami.amazon_linux.id
+  instance_type = var.instance_type
+
+  tags = {
+    Name        = var.name
+    Environment = var.environment
+  }
+}
+
+data <span class="string">"aws_ami"</span> <span class="string">"amazon_linux"</span> {
+  most_recent = true
+  owners      = [<span class="string">"amazon"</span>]
+  filter { name = <span class="string">"name"</span>; values = [<span class="string">"amzn2-ami-hvm-*-x86_64-gp2"</span>] }
+}</pre>
+
+    <pre><span class="comment"># modules/web-server/outputs.tf</span>
+output <span class="string">"instance_id"</span> { value = aws_instance.this.id }
+output <span class="string">"public_ip"</span>   { value = aws_instance.this.public_ip }</pre>
+
+    <pre><span class="comment"># Root main.tf — calling the module</span>
+module <span class="string">"dev_server"</span> {
+  source        = <span class="string">"./modules/web-server"</span>
+  environment   = <span class="string">"dev"</span>
+  name          = <span class="string">"dev-web-01"</span>
+  instance_type = <span class="string">"t3.micro"</span>
+}
+
+module <span class="string">"prod_server"</span> {
+  source        = <span class="string">"./modules/web-server"</span>
+  environment   = <span class="string">"prod"</span>
+  name          = <span class="string">"prod-web-01"</span>
+  instance_type = <span class="string">"t3.large"</span>
+}
+
+<span class="comment"># Access module outputs</span>
+output <span class="string">"prod_server_ip"</span> {
+  value = module.prod_server.public_ip
+}</pre>
+
+    <div class="note">📝 After adding or updating a module source, always run <code>terraform init</code> again to download/update it.</div>
+
+    <h2>Using Public Registry Modules <span class="prod-label">PROD</span></h2>
+    <p>The Terraform Registry has thousands of pre-built, community-maintained modules. Don't reinvent the wheel.</p>
+    <pre><span class="comment"># Use the official AWS VPC module — saves hundreds of lines</span>
+module <span class="string">"vpc"</span> {
+  source  = <span class="string">"terraform-aws-modules/vpc/aws"</span>
+  version = <span class="string">"5.1.2"</span>  <span class="comment"># ALWAYS pin the version!</span>
+
+  name = <span class="string">"my-vpc"</span>
+  cidr = <span class="string">"10.0.0.0/16"</span>
+  azs             = [<span class="string">"us-east-1a"</span>, <span class="string">"us-east-1b"</span>]
+  private_subnets = [<span class="string">"10.0.1.0/24"</span>, <span class="string">"10.0.2.0/24"</span>]
+  public_subnets  = [<span class="string">"10.0.101.0/24"</span>, <span class="string">"10.0.102.0/24"</span>]
+  enable_nat_gateway = true
+}
+
+<span class="comment"># Pass VPC outputs into another module</span>
+module <span class="string">"web_server"</span> {
+  source      = <span class="string">"./modules/web-server"</span>
+  environment = <span class="string">"prod"</span>
+  name        = <span class="string">"prod-web"</span>
+  subnet_id   = module.vpc.private_subnets[0]  <span class="comment"># ← chain modules together</span>
+}</pre>
+  </div>
+
+  <!-- ═══════════════ ADVANCED ═══════════════ -->
+  <div class="level-banner advanced">
+    <div class="icon">🔴</div>
+    <div>
+      STAGE 3 — ADVANCED / PRODUCTION
+      <div class="info">Remote state, state manipulation, team workflows, CI/CD pipelines, and production best practices</div>
+    </div>
+  </div>
+
+  <!-- 11. Backends & Remote State -->
+  <div class="section" id="backends">
+    <div class="section-header">
+      <div class="section-num">11</div>
+      <div>
+        <div class="section-title">Backends & Remote State</div>
+        <div class="section-sub">Store state safely, enable team collaboration, share outputs</div>
+      </div>
+    </div>
+
+    <p>By default Terraform saves state locally in <code>terraform.tfstate</code>. This is fine when learning, but in teams this causes conflicts. <strong>Remote backends</strong> store state in a shared, locked, encrypted location.</p>
+
+    <div class="warning">⚠️ <strong>Never use local state in production.</strong> If your laptop dies, your state is gone. If two engineers run apply at the same time, state corruption can occur.</div>
+
+    <h2>S3 Backend with DynamoDB Locking <span class="prod-label">PROD</span></h2>
+    <pre><span class="comment"># backend.tf</span>
+terraform {
+  backend <span class="string">"s3"</span> {
+    bucket         = <span class="string">"mycompany-terraform-state"</span>  <span class="comment"># S3 bucket stores the state</span>
+    key            = <span class="string">"prod/webapp/terraform.tfstate"</span>
+    region         = <span class="string">"us-east-1"</span>
+    encrypt        = true                          <span class="comment"># Encrypt state at rest</span>
+    dynamodb_table = <span class="string">"terraform-state-lock"</span>       <span class="comment"># Prevents simultaneous applies</span>
+  }
+}</pre>
+
+    <pre><span class="comment"># One-time setup: create the S3 bucket and DynamoDB table</span>
+resource <span class="string">"aws_s3_bucket"</span> <span class="string">"state"</span> {
+  bucket = <span class="string">"mycompany-terraform-state"</span>
+  lifecycle { prevent_destroy = true }   <span class="comment"># Never delete this!</span>
+}
+
+resource <span class="string">"aws_s3_bucket_versioning"</span> <span class="string">"state"</span> {
+  bucket = aws_s3_bucket.state.id
+  versioning_configuration { status = <span class="string">"Enabled"</span> }  <span class="comment"># State history</span>
+}
+
+resource <span class="string">"aws_dynamodb_table"</span> <span class="string">"lock"</span> {
+  name         = <span class="string">"terraform-state-lock"</span>
+  billing_mode = <span class="string">"PAY_PER_REQUEST"</span>
+  hash_key     = <span class="string">"LockID"</span>
+  attribute { name = <span class="string">"LockID"</span>; type = <span class="string">"S"</span> }
+}</pre>
+
+    <h2>Sharing State Between Teams <span class="prod-label">PROD</span></h2>
+    <p>Large organizations split infrastructure into separate state files. Teams share outputs via <code>terraform_remote_state</code>.</p>
+    <pre><span class="comment"># networking team owns VPC → outputs vpc_id</span>
+output <span class="string">"vpc_id"</span> { value = aws_vpc.main.id }
+
+<span class="comment"># app team reads networking state to get vpc_id</span>
+data <span class="string">"terraform_remote_state"</span> <span class="string">"networking"</span> {
+  backend = <span class="string">"s3"</span>
+  config = {
+    bucket = <span class="string">"mycompany-terraform-state"</span>
+    key    = <span class="string">"prod/networking/terraform.tfstate"</span>
+    region = <span class="string">"us-east-1"</span>
+  }
+}
+
+resource <span class="string">"aws_instance"</span> <span class="string">"app"</span> {
+  subnet_id = data.terraform_remote_state.networking.outputs.private_subnet_id
+}</pre>
+
+    <div class="tip">💡 <strong>Key Convention:</strong> Structure your S3 state keys by environment and component:<br><code>{env}/{team}/{component}/terraform.tfstate</code><br>Example: <code>prod/platform/networking/terraform.tfstate</code></div>
+  </div>
+
+  <!-- 12. State Commands -->
+  <div class="section" id="state-commands">
+    <div class="section-header">
+      <div class="section-num">12</div>
+      <div>
+        <div class="section-title">State Commands</div>
+        <div class="section-sub">Inspect, move, import and repair Terraform state</div>
+      </div>
+    </div>
+
+    <p>State commands are how you inspect and surgically modify what Terraform is tracking. These are essential operational skills for any production engineer.</p>
+
+    <table>
+      <thead><tr><th>Command</th><th>Purpose</th><th>Production Use Case</th></tr></thead>
+      <tbody>
+        <tr><td><code>terraform state list</code></td><td>List all tracked resources</td><td>Audit before any state operation</td></tr>
+        <tr><td><code>terraform state show &lt;res&gt;</code></td><td>Inspect resource attributes</td><td>Debug without going to AWS console</td></tr>
+        <tr><td><code>terraform state mv</code></td><td>Move/rename resource in state</td><td>After refactoring code into modules</td></tr>
+        <tr><td><code>terraform state rm</code></td><td>Remove resource from state</td><td>Hand off resource to another team</td></tr>
+        <tr><td><code>terraform state pull</code></td><td>Download raw state to stdout</td><td>Manual backup before risky operations</td></tr>
+        <tr><td><code>terraform state push</code></td><td>Upload state to backend</td><td>Restore corrupted remote state</td></tr>
+        <tr><td><code>terraform import</code></td><td>Import existing infra into state</td><td>Adopt manually created resources</td></tr>
+        <tr><td><code>terraform force-unlock</code></td><td>Remove stuck state lock</td><td>After a crashed CI/CD pipeline</td></tr>
+        <tr><td><code>terraform apply -refresh-only</code></td><td>Sync state with real infra</td><td>After manual changes in AWS console</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Real Workflow: Moving Resource into a Module</h2>
+    <pre><span class="comment"># Scenario: You wrote aws_instance.web at root level.</span>
+<span class="comment"># You refactor it into module "web". Without state mv,</span>
+<span class="comment"># Terraform will DESTROY the old one and CREATE a new one!</span>
+
+<span class="comment"># 1. See current state</span>
+terraform state list
+<span class="comment"># aws_instance.web   ← old address</span>
+
+<span class="comment"># 2. Move state to match new code structure</span>
+terraform state mv aws_instance.web module.web.aws_instance.this
+
+<span class="comment"># 3. Verify</span>
+terraform state list
+<span class="comment"># module.web.aws_instance.this   ← new address</span>
+
+<span class="comment"># 4. Plan should now show: No changes.</span>
+terraform plan</pre>
+
+    <h2>Importing Manually Created Resources</h2>
+    <pre><span class="comment"># Scenario: Someone manually created an S3 bucket in the console.</span>
+<span class="comment"># You want Terraform to manage it going forward.</span>
+
+<span class="comment"># 1. Write the resource block in your .tf file first</span>
+resource <span class="string">"aws_s3_bucket"</span> <span class="string">"legacy"</span> {
+  bucket = <span class="string">"my-old-manual-bucket"</span>
+}
+
+<span class="comment"># 2. Import the real resource into state</span>
+terraform import aws_s3_bucket.legacy my-old-manual-bucket
+
+<span class="comment"># 3. Run plan to see if any attributes need updating</span>
+terraform plan</pre>
+  </div>
+
+  <!-- 13. Best Practices -->
+  <div class="section" id="best-practices">
+    <div class="section-header">
+      <div class="section-num">13</div>
+      <div>
+        <div class="section-title">Best Practices</div>
+        <div class="section-sub">Patterns used by mature infrastructure teams worldwide</div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h4>📌 Pin All Versions</h4>
+        <p>Pin provider and module versions. Use <code>~&gt; 5.0</code> (allows patch, not major updates). Never leave versions unpinned in production.</p>
+      </div>
+      <div class="card">
+        <h4>🔒 Never Store Secrets in Code</h4>
+        <p>Use AWS Secrets Manager, SSM Parameter Store, or HashiCorp Vault. Fetch secrets with data sources at apply time.</p>
+      </div>
+      <div class="card">
+        <h4>🏷️ Tag Everything</h4>
+        <p>Apply consistent tags: <code>Environment</code>, <code>Team</code>, <code>Project</code>, <code>ManagedBy=terraform</code>. Use a locals block for common tags.</p>
+      </div>
+      <div class="card">
+        <h4>📁 One Root per Environment</h4>
+        <p>Use separate directories (or repos) for dev/staging/prod. Avoids accidental cross-environment applies.</p>
+      </div>
+      <div class="card">
+        <h4>✅ Always Plan Before Apply</h4>
+        <p>Run <code>terraform plan -out=tfplan</code> and read it carefully. In CI/CD, require human approval for prod.</p>
+      </div>
+      <div class="card">
+        <h4>🔄 Keep State Backed Up</h4>
+        <p>Enable S3 versioning on your state bucket. You can roll back to previous state versions if something goes wrong.</p>
+      </div>
+    </div>
+
+    <h2>versions.tf — Always Include This File</h2>
+    <pre><span class="comment"># versions.tf — lock your toolchain</span>
+terraform {
+  required_version = <span class="string">"~&gt; 1.6"</span>
+
+  required_providers {
+    aws = {
+      source  = <span class="string">"hashicorp/aws"</span>
+      version = <span class="string">"~&gt; 5.0"</span>
+    }
+  }
+}</pre>
+
+    <h2>Standard Tagging with Locals</h2>
+    <pre>locals {
+  common_tags = {
+    Environment = var.environment
+    Project     = var.project
+    Team        = var.team
+    ManagedBy   = <span class="string">"terraform"</span>
+  }
+}
+
+<span class="comment"># Apply to every resource</span>
+resource <span class="string">"aws_instance"</span> <span class="string">"app"</span> {
+  tags = merge(local.common_tags, { Name = <span class="string">"app-server"</span> })
+}</pre>
+
+    <h2>.gitignore for Terraform Projects</h2>
+    <pre><span class="comment"># .gitignore</span>
+.terraform/          <span class="comment"># Downloaded providers (large, auto-generated)</span>
+*.tfstate            <span class="comment"># Local state files</span>
+*.tfstate.backup     <span class="comment"># State backups</span>
+*.tfplan             <span class="comment"># Saved plan files</span>
+.terraform.lock.hcl  <span class="comment"># Commit this one! It locks provider versions</span>
+*.tfvars             <span class="comment"># Exclude if they contain secrets</span></pre>
+  </div>
+
+  <!-- 14. CI/CD -->
+  <div class="section" id="cicd">
+    <div class="section-header">
+      <div class="section-num">14</div>
+      <div>
+        <div class="section-title">CI/CD Integration</div>
+        <div class="section-sub">Automate Terraform with GitHub Actions — the production standard</div>
+      </div>
+    </div>
+
+    <p>In production, Terraform is never run manually by engineers. Every change goes through a CI/CD pipeline that validates, plans, and applies changes with proper review gates.</p>
+
+    <div class="flow">
+      <div class="flow-step">📝 PR Opened</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">✅ fmt + validate</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">📋 Plan (comment on PR)</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">👤 Human Review</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">🔀 Merge to main</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">🚀 Auto Apply</div>
+    </div>
+
+    <h2>GitHub Actions Pipeline <span class="prod-label">PROD</span></h2>
+    <pre><span class="comment"># .github/workflows/terraform.yml</span>
+name: Terraform CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: <span class="string">"1.6.3"</span>
+
+      <span class="comment"># Authenticate with AWS using OIDC (no long-lived keys!)</span>
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789:role/TerraformCIRole
+          aws-region: us-east-1
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan -var-file=environments/prod.tfvars
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+      <span class="comment"># Only apply when code is merged to main</span>
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply tfplan</pre>
+
+    <h2>Key CI/CD CLI Flags</h2>
+    <pre><span class="comment"># Save plan to file (apply exactly what was planned)</span>
+terraform plan  -out=tfplan
+terraform apply tfplan
+
+<span class="comment"># Non-interactive apply (no "yes" prompt) — for CI only</span>
+terraform apply -auto-approve
+
+<span class="comment"># Exit codes for scripting:</span>
+<span class="comment"># 0 = no changes  |  1 = error  |  2 = changes present</span>
+terraform plan -detailed-exitcode
+
+<span class="comment"># Target a single resource (use sparingly)</span>
+terraform apply -target=module.vpc</pre>
+
+    <div class="tip">💡 <strong>Security Tip:</strong> Use AWS OIDC with GitHub Actions instead of long-lived access keys. Create an IAM role that trusts GitHub's OIDC provider — credentials are temporary and automatically rotated.</div>
+  </div>
+
+  <div class="footer">
+    🏗️ Terraform: Zero to Production &nbsp;|&nbsp; A structured learning guide &nbsp;|&nbsp; Terraform v1.x · AWS-focused
+  </div>
+</div>
+
+</body>
+</html>

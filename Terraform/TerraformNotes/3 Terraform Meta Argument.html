@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terraform Meta-Arguments – Complete Notes</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Calibri, sans-serif; background: #f4f6fb; color: #222; }
+  .page { max-width: 900px; margin: 40px auto; background: #fff; border-radius: 10px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); padding: 52px 60px 60px; }
+
+  .title { font-size: 2.2rem; font-weight: 800; color: #1F4E79; text-align: center; border-bottom: 4px solid #2E75B6; padding-bottom: 14px; margin-bottom: 4px; }
+  .subtitle { text-align: center; color: #555; font-size: 1rem; margin-bottom: 36px; }
+
+  h1 { font-size: 1.45rem; font-weight: 700; color: #1F4E79; border-bottom: 3px solid #2E75B6; padding-bottom: 6px; margin: 38px 0 14px; }
+  h2 { font-size: 1.15rem; font-weight: 700; color: #2E75B6; margin: 24px 0 10px; }
+  h3 { font-size: 1rem; font-weight: 700; color: #333; margin: 18px 0 8px; }
+
+  p { font-size: 0.97rem; line-height: 1.7; margin-bottom: 12px; }
+
+  pre {
+    background: #EEF2F7;
+    border: 1px solid #ccd6e8;
+    border-radius: 7px;
+    padding: 16px 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: #1A1A2E;
+    overflow-x: auto;
+    margin: 10px 0 16px;
+  }
+
+  .note {
+    background: #FFFBF0;
+    border-left: 5px solid #F5A623;
+    border-radius: 0 6px 6px 0;
+    padding: 12px 16px;
+    font-style: italic;
+    font-size: 0.92rem;
+    color: #555;
+    margin: 14px 0 20px;
+  }
+
+  ul { margin: 8px 0 14px 28px; }
+  ul li { font-size: 0.97rem; line-height: 1.8; }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0 10px; font-size: 0.92rem; }
+  th { background: #1F4E79; color: #fff; padding: 10px 14px; text-align: left; font-weight: 600; }
+  td { padding: 9px 14px; border: 1px solid #ccc; vertical-align: top; }
+  tr:nth-child(even) td { background: #EEF4FB; }
+  td:first-child { font-family: 'Courier New', monospace; font-size: 0.85rem; color: #1A1A2E; }
+
+  .footer { margin-top: 48px; border-top: 3px solid #2E75B6; padding-top: 12px; text-align: center; color: #888; font-size: 0.85rem; }
+
+  @media print {
+    body { background: white; }
+    .page { box-shadow: none; margin: 0; padding: 30px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="title">Terraform Meta-Arguments</div>
+  <div class="subtitle">Complete Notes with Examples</div>
+
+  <!-- Intro -->
+  <h1>What are Meta-Arguments?</h1>
+  <p>Meta-arguments are special arguments in Terraform that can be used within <strong>any resource block</strong> to change the behavior of that resource. Unlike provider-specific arguments, meta-arguments are built into Terraform itself and apply to all resource types.</p>
+  <p>Terraform supports the following meta-arguments:</p>
+  <ul>
+    <li><strong>depends_on</strong> – Explicit dependency management</li>
+    <li><strong>count</strong> – Create multiple resource instances</li>
+    <li><strong>for_each</strong> – Create instances from a map or set</li>
+    <li><strong>provider</strong> – Select a non-default provider configuration</li>
+    <li><strong>lifecycle</strong> – Control resource lifecycle behavior</li>
+  </ul>
+
+  <!-- 1. depends_on -->
+  <h1>1. depends_on</h1>
+  <p>The <code>depends_on</code> meta-argument is used to explicitly declare a dependency between resources when Terraform cannot automatically infer it. By default, Terraform builds a dependency graph automatically, but sometimes the dependency is hidden (e.g., an application that uses a policy but doesn't reference it directly).</p>
+
+  <h3>Syntax:</h3>
+  <pre>resource "aws_instance" "example" {
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = "t2.micro"
+
+  depends_on = [
+    aws_iam_role_policy.example_policy
+  ]
+}</pre>
+
+  <h3>Real-World Example:</h3>
+  <p>An EC2 instance that runs an app requiring an S3 bucket to exist first, but the instance configuration doesn't directly reference the bucket:</p>
+  <pre>resource "aws_s3_bucket" "app_data" {
+  bucket = "my-app-data-bucket"
+}
+
+resource "aws_instance" "app_server" {
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = "t2.micro"
+
+  # EC2 instance depends on S3 bucket even though
+  # the bucket name is not referenced here
+  depends_on = [aws_s3_bucket.app_data]
+}</pre>
+  <div class="note">📝 Note: Use <code>depends_on</code> sparingly. Prefer implicit dependencies (referencing attributes) when possible, as they are cleaner and more maintainable.</div>
+
+  <!-- 2. count -->
+  <h1>2. count</h1>
+  <p>The <code>count</code> meta-argument allows you to create multiple instances of a resource from a single resource block. When count is set, each instance has a unique index (<code>count.index</code>) starting from 0.</p>
+
+  <h3>Syntax:</h3>
+  <pre>resource "aws_instance" "server" {
+  count         = 3
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = "t2.micro"
+
+  tags = {
+    Name = "Server-${count.index}"
+  }
+}</pre>
+
+  <h3>Example with Variable:</h3>
+  <pre>variable "instance_count" {
+  default = 3
+}
+
+resource "aws_instance" "web" {
+  count         = var.instance_count
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = "t2.micro"
+
+  tags = {
+    Name = "WebServer-${count.index + 1}"
+  }
+}
+
+# Accessing a specific instance
+output "first_instance_ip" {
+  value = aws_instance.web[0].public_ip
+}
+
+# Accessing all instances
+output "all_instance_ips" {
+  value = aws_instance.web[*].public_ip
+}</pre>
+  <div class="note">📝 Note: <code>count</code> creates resources indexed by integer (0, 1, 2...). Removing an item from the middle forces re-creation of subsequent resources. Use <code>for_each</code> for more stable indexing.</div>
+
+  <!-- 3. for_each -->
+  <h1>3. for_each</h1>
+  <p>The <code>for_each</code> meta-argument creates multiple instances of a resource based on a map or set of strings. Each instance is identified by a string key instead of a numeric index, making it more flexible and stable than count.</p>
+
+  <h3>Syntax with Set of Strings:</h3>
+  <pre>resource "aws_s3_bucket" "buckets" {
+  for_each = toset(["dev", "staging", "prod"])
+
+  bucket = "my-app-${each.key}"
+
+  tags = {
+    Environment = each.key
+  }
+}</pre>
+
+  <h3>Syntax with Map:</h3>
+  <pre>resource "aws_instance" "servers" {
+  for_each = {
+    web = "t2.micro"
+    app = "t2.small"
+    db  = "t2.medium"
+  }
+
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = each.value
+
+  tags = {
+    Name = each.key
+  }
+}
+
+# Access a specific instance
+output "web_server_ip" {
+  value = aws_instance.servers["web"].public_ip
+}</pre>
+
+  <h3>for_each with Variable Map:</h3>
+  <pre>variable "environments" {
+  type = map(object({
+    instance_type = string
+    region        = string
+  }))
+  default = {
+    dev  = { instance_type = "t2.micro",  region = "us-east-1" }
+    prod = { instance_type = "t2.large",  region = "us-west-2" }
+  }
+}
+
+resource "aws_instance" "env_servers" {
+  for_each      = var.environments
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = each.value.instance_type
+
+  tags = {
+    Name        = "Server-${each.key}"
+    Environment = each.key
+  }
+}</pre>
+  <div class="note">📝 Note: <code>each.key</code> gives the map key or set value. <code>each.value</code> gives the map value. <code>for_each</code> is preferred over <code>count</code> when resources have distinct identities.</div>
+
+  <!-- 4. provider -->
+  <h1>4. provider</h1>
+  <p>The <code>provider</code> meta-argument allows you to select a specific provider configuration when multiple configurations of the same provider exist (e.g., deploying resources to multiple AWS regions or accounts).</p>
+
+  <h3>Example – Multi-Region Deployment:</h3>
+  <pre># Default provider (us-east-1)
+provider "aws" {
+  region = "us-east-1"
+}
+
+# Alias for another region
+provider "aws" {
+  alias  = "west"
+  region = "us-west-2"
+}
+
+# Resource using default provider
+resource "aws_instance" "east_server" {
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = "t2.micro"
+}
+
+# Resource using aliased provider
+resource "aws_instance" "west_server" {
+  provider      = aws.west
+  ami           = "ami-0abc123def456"
+  instance_type = "t2.micro"
+}</pre>
+  <div class="note">📝 Note: The <code>provider</code> meta-argument uses the format <code>&lt;provider_name&gt;.&lt;alias&gt;</code>. Without it, Terraform uses the default (non-aliased) provider configuration.</div>
+
+  <!-- 5. lifecycle -->
+  <h1>5. lifecycle</h1>
+  <p>The <code>lifecycle</code> meta-argument provides fine-grained control over how Terraform creates, updates, and destroys resources. It is a nested block with several available settings.</p>
+
+  <h2>5a. create_before_destroy</h2>
+  <p>By default, Terraform destroys the old resource before creating the new one. Setting <code>create_before_destroy = true</code> reverses this — helpful for zero-downtime deployments.</p>
+  <pre>resource "aws_instance" "web" {
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = "t2.micro"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}</pre>
+
+  <h2>5b. prevent_destroy</h2>
+  <p>Prevents accidental destruction of critical resources. Terraform will throw an error if a destroy operation is planned for this resource.</p>
+  <pre>resource "aws_db_instance" "production_db" {
+  identifier     = "prod-db"
+  engine         = "mysql"
+  instance_class = "db.t3.medium"
+  username       = "admin"
+  password       = "supersecret"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}</pre>
+
+  <h2>5c. ignore_changes</h2>
+  <p>Tells Terraform to ignore changes to specific attributes after initial creation. Useful when external processes modify a resource (e.g., auto-scaling changes instance count).</p>
+  <pre>resource "aws_instance" "app" {
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = "t2.micro"
+
+  tags = {
+    Name = "AppServer"
+  }
+
+  lifecycle {
+    # Ignore changes to ami and tags after creation
+    ignore_changes = [ami, tags]
+  }
+}
+
+# Ignore ALL changes (use with caution)
+resource "aws_instance" "managed_externally" {
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = "t2.micro"
+
+  lifecycle {
+    ignore_changes = all
+  }
+}</pre>
+
+  <h2>5d. replace_triggered_by</h2>
+  <p>Forces replacement of a resource when the referenced resource or attribute changes. Available from Terraform v1.2+.</p>
+  <pre>resource "aws_launch_template" "lt" {
+  name          = "my-launch-template"
+  image_id      = "ami-0c55b159cbfafe1f0"
+  instance_type = "t2.micro"
+}
+
+resource "aws_autoscaling_group" "asg" {
+  desired_capacity = 2
+  min_size         = 1
+  max_size         = 5
+
+  launch_template {
+    id      = aws_launch_template.lt.id
+    version = "$Latest"
+  }
+
+  lifecycle {
+    # Replace ASG whenever the launch template changes
+    replace_triggered_by = [aws_launch_template.lt]
+  }
+}</pre>
+  <div class="note">📝 Note: Use <code>prevent_destroy</code> for databases and critical resources, and <code>create_before_destroy</code> for high-availability services to ensure zero downtime.</div>
+
+  <!-- Summary Table -->
+  <h1>Quick Reference Summary</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Meta-Argument</th>
+        <th>Purpose</th>
+        <th>When to Use</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>depends_on</td>
+        <td>Declare explicit dependencies</td>
+        <td>When Terraform can't infer the dependency automatically</td>
+      </tr>
+      <tr>
+        <td>count</td>
+        <td>Create N identical resources</td>
+        <td>Creating multiple similar resources with a numeric index</td>
+      </tr>
+      <tr>
+        <td>for_each</td>
+        <td>Create resources from map/set</td>
+        <td>When each resource needs a unique key-based identity</td>
+      </tr>
+      <tr>
+        <td>provider</td>
+        <td>Select provider configuration</td>
+        <td>Multi-region or multi-account deployments</td>
+      </tr>
+      <tr>
+        <td>lifecycle</td>
+        <td>Control create/update/destroy</td>
+        <td>Critical resources, zero-downtime, external changes</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="footer">Terraform Meta-Arguments Reference &nbsp;|&nbsp; Applies to Terraform v0.13+</div>
+</div>
+</body>
+</html>

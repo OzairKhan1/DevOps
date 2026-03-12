@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terraform Multi-Environment Guide</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Calibri, sans-serif; background: #f0f4fb; color: #222; }
+
+  .sidebar {
+    position: fixed; top: 0; left: 0; width: 265px; height: 100vh;
+    background: #111827; overflow-y: auto; padding: 0 0 40px; z-index: 100;
+    box-shadow: 3px 0 16px rgba(0,0,0,0.3);
+  }
+  .sidebar-logo {
+    background: linear-gradient(135deg, #1e3a5f, #2563eb);
+    padding: 20px 18px 16px; border-bottom: 2px solid #1e3a8a;
+  }
+  .sidebar-logo .title { font-size: 1rem; font-weight: 800; color: #fff; }
+  .sidebar-logo .sub { font-size: 0.75rem; color: #93c5fd; margin-top: 3px; }
+  .sidebar a {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 16px; color: #9ca3af; font-size: 0.86rem;
+    text-decoration: none; border-left: 3px solid transparent; transition: all 0.18s;
+  }
+  .sidebar a:hover { color: #fff; background: #1f2937; border-left-color: #3b82f6; }
+  .sidebar a .num {
+    background: #1f2937; border-radius: 50%; width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem; font-weight: 800; flex-shrink: 0; color: #60a5fa;
+  }
+  .sidebar .group-label {
+    padding: 14px 16px 4px; font-size: 0.67rem; text-transform: uppercase;
+    letter-spacing: 2px; color: #4b5563; font-weight: 700;
+  }
+
+  .main { margin-left: 265px; padding: 40px 50px 100px; max-width: 1080px; }
+
+  /* Cover */
+  .cover {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 55%, #064e3b 100%);
+    border-radius: 16px; padding: 56px 52px 48px; margin-bottom: 44px; color: #fff; position: relative; overflow: hidden;
+  }
+  .cover::after { content: "{ }"; position: absolute; right: 40px; top: 20px; font-size: 9rem; font-weight: 900; opacity: 0.05; font-family: monospace; }
+  .cover .eyebrow { font-size: 0.78rem; letter-spacing: 3px; text-transform: uppercase; color: #60a5fa; margin-bottom: 12px; }
+  .cover h1 { font-size: 2.5rem; font-weight: 900; line-height: 1.2; margin-bottom: 14px; }
+  .cover .desc { font-size: 1rem; opacity: 0.8; line-height: 1.75; max-width: 560px; margin-bottom: 30px; }
+  .cover-badges { display: flex; gap: 10px; flex-wrap: wrap; }
+  .cbadge { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); border-radius: 20px; padding: 5px 14px; font-size: 0.78rem; font-weight: 600; }
+
+  /* Approach comparison */
+  .approach-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 20px 0; }
+  .approach-card { border-radius: 10px; padding: 20px; border: 2px solid; }
+  .approach-card.ok { background: #fefce8; border-color: #eab308; }
+  .approach-card.best { background: #f0fdf4; border-color: #22c55e; position: relative; }
+  .approach-card.adv { background: #faf5ff; border-color: #a855f7; }
+  .approach-card .badge-top { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #22c55e; color: #fff; padding: 2px 14px; border-radius: 12px; font-size: 0.72rem; font-weight: 800; white-space: nowrap; }
+  .approach-card h3 { font-size: 0.97rem; font-weight: 800; margin-bottom: 8px; }
+  .approach-card p { font-size: 0.84rem; line-height: 1.65; color: #444; margin-bottom: 8px; }
+  .approach-card .pros { font-size: 0.8rem; color: #166534; }
+  .approach-card .cons { font-size: 0.8rem; color: #991b1b; margin-top: 4px; }
+
+  /* Section */
+  .section { background: #fff; border-radius: 12px; padding: 36px 42px; margin-bottom: 28px; box-shadow: 0 2px 18px rgba(30,60,110,0.07); }
+  .section-header { display: flex; align-items: flex-start; gap: 15px; margin-bottom: 20px; border-bottom: 3px solid #eff3fb; padding-bottom: 16px; }
+  .snum { background: linear-gradient(135deg, #1e3a5f, #2563eb); color: #fff; width: 46px; height: 46px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 900; flex-shrink: 0; }
+  .stitle { font-size: 1.42rem; font-weight: 800; color: #1e3a5f; }
+  .ssub { font-size: 0.86rem; color: #2563eb; margin-top: 3px; }
+
+  h2 { font-size: 1.05rem; font-weight: 700; color: #1e3a5f; margin: 26px 0 10px; padding: 8px 14px; background: #eff6ff; border-left: 4px solid #2563eb; border-radius: 0 6px 6px 0; }
+  h3 { font-size: 0.96rem; font-weight: 700; color: #374151; margin: 16px 0 8px; }
+  p { font-size: 0.93rem; line-height: 1.78; margin-bottom: 11px; color: #374151; }
+
+  pre {
+    background: #0d1117; color: #c9d1d9;
+    border-radius: 9px; padding: 18px 22px;
+    font-family: 'Courier New', monospace; font-size: 0.81rem; line-height: 1.7;
+    overflow-x: auto; margin: 10px 0 16px; border: 1px solid #21262d;
+  }
+  .cm { color: #8b949e; }
+  .kw { color: #ff7b72; }
+  .st { color: #a5d6ff; }
+  .vr { color: #ffa657; }
+  .gn { color: #7ee787; }
+
+  .note  { background: #fffbf0; border-left: 5px solid #f59e0b; border-radius: 0 8px 8px 0; padding: 12px 16px; font-size: 0.9rem; color: #555; margin: 12px 0 18px; line-height: 1.7; }
+  .warn  { background: #fff1f2; border-left: 5px solid #ef4444; border-radius: 0 8px 8px 0; padding: 12px 16px; font-size: 0.9rem; color: #555; margin: 12px 0 18px; line-height: 1.7; }
+  .tip   { background: #f0fdf4; border-left: 5px solid #22c55e; border-radius: 0 8px 8px 0; padding: 12px 16px; font-size: 0.9rem; color: #374151; margin: 12px 0 18px; line-height: 1.7; }
+  .info  { background: #eff6ff; border-left: 5px solid #2563eb; border-radius: 0 8px 8px 0; padding: 12px 16px; font-size: 0.9rem; color: #374151; margin: 12px 0 18px; line-height: 1.7; }
+
+  ul, ol { margin: 8px 0 12px 24px; }
+  li { font-size: 0.92rem; line-height: 1.85; color: #374151; }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; font-size: 0.88rem; }
+  th { background: #1e3a5f; color: #fff; padding: 11px 14px; text-align: left; font-weight: 600; }
+  td { padding: 10px 14px; border: 1px solid #e2e8f0; vertical-align: top; line-height: 1.6; }
+  tr:nth-child(even) td { background: #f8faff; }
+  code { background: #eef2f7; border: 1px solid #ccd; border-radius: 4px; padding: 1px 6px; font-family: 'Courier New', monospace; font-size: 0.81rem; color: #1e3a5f; }
+
+  /* folder tree */
+  .tree { background: #111827; border-radius: 9px; padding: 20px 24px; font-family: 'Courier New', monospace; font-size: 0.82rem; line-height: 1.9; color: #e5e7eb; margin: 12px 0 18px; }
+  .tree .dir  { color: #60a5fa; font-weight: 700; }
+  .tree .file { color: #d1d5db; }
+  .tree .note { color: #6b7280; font-style: italic; }
+  .tree .env-dev { color: #34d399; }
+  .tree .env-test { color: #fbbf24; }
+  .tree .env-prod { color: #f87171; }
+
+  /* flow */
+  .flow { display: flex; align-items: center; gap: 0; margin: 16px 0; flex-wrap: wrap; }
+  .fstep { background: #eff6ff; border: 2px solid #2563eb; padding: 10px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700; color: #1e3a5f; text-align: center; min-width: 90px; }
+  .farrow { font-size: 1.3rem; color: #2563eb; padding: 0 6px; }
+
+  /* env tags */
+  .tag-dev  { display: inline-block; background: #064e3b; color: #6ee7b7; border-radius: 4px; padding: 1px 9px; font-size: 0.72rem; font-weight: 700; margin: 0 2px; }
+  .tag-test { display: inline-block; background: #451a03; color: #fcd34d; border-radius: 4px; padding: 1px 9px; font-size: 0.72rem; font-weight: 700; margin: 0 2px; }
+  .tag-prod { display: inline-block; background: #450a0a; color: #fca5a5; border-radius: 4px; padding: 1px 9px; font-size: 0.72rem; font-weight: 700; margin: 0 2px; }
+  .tag-std  { display: inline-block; background: #1e3a5f; color: #93c5fd; border-radius: 4px; padding: 1px 9px; font-size: 0.72rem; font-weight: 700; margin: 0 2px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 14px 0; }
+  .card  { background: #f8faff; border: 1px solid #dbeafe; border-radius: 9px; padding: 16px 18px; }
+  .card h4 { font-size: 0.9rem; font-weight: 700; color: #1e3a5f; margin-bottom: 6px; }
+  .card p  { font-size: 0.85rem; margin: 0; }
+
+  .step-badge { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(90deg,#1e3a5f,#2563eb); color: #fff; border-radius: 8px; padding: 6px 16px; font-size: 0.82rem; font-weight: 700; margin: 20px 0 10px; }
+
+  .divider { border: none; border-top: 2px dashed #e2e8f0; margin: 28px 0; }
+  .footer { text-align: center; color: #9ca3af; font-size: 0.84rem; margin-top: 50px; padding-top: 20px; border-top: 3px solid #2563eb; }
+
+  @media print {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 20px; }
+    .section { box-shadow: none; border: 1px solid #ddd; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="title">🏗️ Multi-Env Terraform</div>
+    <div class="sub">Industrial Standard Guide</div>
+  </div>
+
+  <div class="group-label">Understand First</div>
+  <a href="#approaches"><span class="num">1</span> The 3 Approaches</a>
+  <a href="#why-dir"><span class="num">2</span> Why Directory-per-Env</a>
+
+  <div class="group-label">Build It</div>
+  <a href="#structure"><span class="num">3</span> Folder Structure</a>
+  <a href="#modules-shared"><span class="num">4</span> Shared Modules</a>
+  <a href="#backend-setup"><span class="num">5</span> Remote Backend Setup</a>
+  <a href="#env-configs"><span class="num">6</span> Environment Configs</a>
+  <a href="#deploy"><span class="num">7</span> Deploy Each Env</a>
+
+  <div class="group-label">Production Level</div>
+  <a href="#state-isolation"><span class="num">8</span> State Isolation Strategy</a>
+  <a href="#migrate"><span class="num">9</span> Migrate Your Existing Code</a>
+  <a href="#cicd"><span class="num">10</span> CI/CD per Environment</a>
+  <a href="#cheatsheet"><span class="num">11</span> Quick Cheat Sheet</a>
+</div>
+
+<div class="main">
+
+  <!-- Cover -->
+  <div class="cover">
+    <div class="eyebrow">Industrial Standard Guide</div>
+    <h1>Managing Multiple Environments<br>with Terraform & Remote State</h1>
+    <div class="desc">A complete step-by-step guide to structuring test, dev, and prod environments the way real production teams do it — with isolated remote state, shared modules, and automated pipelines.</div>
+    <div class="cover-badges">
+      <span class="cbadge">🟢 dev</span>
+      <span class="cbadge">🟡 test</span>
+      <span class="cbadge">🔴 prod</span>
+      <span class="cbadge">🗄️ S3 Remote State</span>
+      <span class="cbadge">🔒 DynamoDB Locking</span>
+      <span class="cbadge">⚡ Terraform v1.x</span>
+    </div>
+  </div>
+
+  <!-- 1. The 3 Approaches -->
+  <div class="section" id="approaches">
+    <div class="section-header">
+      <div class="snum">1</div>
+      <div>
+        <div class="stitle">The 3 Industrial Approaches</div>
+        <div class="ssub">Understand your options before choosing</div>
+      </div>
+    </div>
+
+    <p>There are three widely-used patterns for managing multiple environments in Terraform. Each has trade-offs. Knowing all three helps you choose the right one for your team.</p>
+
+    <div class="approach-grid">
+      <div class="approach-card ok">
+        <h3>🗂️ Workspaces</h3>
+        <p>One codebase. Multiple state files in the same backend, switched by workspace name.</p>
+        <div class="pros">✅ Quick to set up<br>✅ Less code duplication</div>
+        <div class="cons">❌ Same backend credentials for all envs<br>❌ No true blast-radius isolation<br>❌ Easy to accidentally apply to wrong env<br>❌ Not recommended for prod by HashiCorp</div>
+      </div>
+      <div class="approach-card best">
+        <div class="badge-top">⭐ Industry Standard</div>
+        <h3>📁 Directory-per-Environment</h3>
+        <p>Separate folder per environment. Each has its own backend config, state file, and variables.</p>
+        <div class="pros">✅ True isolation<br>✅ Different AWS accounts per env<br>✅ Independent state files<br>✅ Recommended by HashiCorp & AWS<br>✅ Most teams use this</div>
+        <div class="cons">❌ Some code duplication (solved by modules)</div>
+      </div>
+      <div class="approach-card adv">
+        <h3>🔧 Terragrunt</h3>
+        <p>A wrapper tool over Terraform that generates backend configs and eliminates all duplication.</p>
+        <div class="pros">✅ Zero duplication (DRY)<br>✅ Handles complex dependency graphs<br>✅ Great for 10+ environments</div>
+        <div class="cons">❌ Extra tool to learn<br>❌ Overkill for small teams<br>❌ Debugging is harder</div>
+      </div>
+    </div>
+
+    <div class="tip">💡 <strong>Our recommendation and industry standard = Directory-per-Environment.</strong> It gives you true isolation without adding tooling complexity. Modules solve the duplication problem. This is what this guide covers end-to-end.</div>
+  </div>
+
+  <!-- 2. Why Directory per Env -->
+  <div class="section" id="why-dir">
+    <div class="section-header">
+      <div class="snum">2</div>
+      <div>
+        <div class="stitle">Why Directory-per-Environment Wins</div>
+        <div class="ssub">The isolation model that enterprise teams trust</div>
+      </div>
+    </div>
+
+    <h2>The Core Principle: Separate Everything</h2>
+    <p>Each environment should be completely independent. If prod breaks, dev keeps working. If someone runs <code>terraform destroy</code> in dev, prod is untouched.</p>
+
+    <table>
+      <thead><tr><th>What's Isolated</th><th>Dev</th><th>Test</th><th>Prod</th></tr></thead>
+      <tbody>
+        <tr><td>State File (.tfstate)</td><td>dev/terraform.tfstate</td><td>test/terraform.tfstate</td><td>prod/terraform.tfstate</td></tr>
+        <tr><td>Backend Config</td><td>Separate S3 key</td><td>Separate S3 key</td><td>Separate S3 key</td></tr>
+        <tr><td>Variable Values</td><td>dev.tfvars</td><td>test.tfvars</td><td>prod.tfvars</td></tr>
+        <tr><td>AWS Account (ideal)</td><td>dev-account</td><td>test-account</td><td>prod-account</td></tr>
+        <tr><td>Instance Sizes</td><td>t3.micro</td><td>t3.small</td><td>t3.large</td></tr>
+        <tr><td>Replica Count</td><td>1</td><td>2</td><td>5+</td></tr>
+      </tbody>
+    </table>
+
+    <h2>State Key Naming Convention</h2>
+    <p>Every environment gets its own path inside your S3 bucket. This is how you keep state files completely separate:</p>
+
+    <div class="tree">
+      <span class="dir">S3 Bucket: mycompany-terraform-state</span><br>
+      ├── <span class="env-dev">dev/</span><br>
+      │   └── <span class="env-dev">webapp/terraform.tfstate</span>     <span class="note"># dev state</span><br>
+      ├── <span class="env-test">test/</span><br>
+      │   └── <span class="env-test">webapp/terraform.tfstate</span>    <span class="note"># test state</span><br>
+      └── <span class="env-prod">prod/</span><br>
+          └── <span class="env-prod">webapp/terraform.tfstate</span>    <span class="note"># prod state</span>
+    </div>
+
+    <div class="warn">⚠️ <strong>Critical:</strong> Never share a state file between environments. One corrupted state file should never bring down another environment.</div>
+  </div>
+
+  <!-- 3. Folder Structure -->
+  <div class="section" id="structure">
+    <div class="section-header">
+      <div class="snum">3</div>
+      <div>
+        <div class="stitle">The Complete Folder Structure</div>
+        <div class="ssub">How to organize your repository — the industry standard layout</div>
+      </div>
+    </div>
+
+    <p>This is the structure you should build. Don't worry — we'll create each file step by step.</p>
+
+    <div class="tree">
+my-terraform-project/<br>
+│<br>
+├── <span class="dir">modules/</span>                          <span class="note"># ← Shared, reusable code (write ONCE)</span><br>
+│   └── <span class="dir">webapp/</span>                       <span class="note"># Your app module</span><br>
+│       ├── <span class="file">main.tf</span>               <span class="note"># All resources (EC2, SG, RDS, etc.)</span><br>
+│       ├── <span class="file">variables.tf</span>          <span class="note"># Input variables</span><br>
+│       ├── <span class="file">outputs.tf</span>            <span class="note"># Outputs</span><br>
+│       └── <span class="file">versions.tf</span>           <span class="note"># Provider requirements</span><br>
+│<br>
+├── <span class="dir">environments/</span>                     <span class="note"># ← Each env is separate</span><br>
+│   ├── <span class="dir env-dev">dev/</span>                          <span class="note"># Dev environment</span><br>
+│   │   ├── <span class="file">main.tf</span>               <span class="note"># Calls the module</span><br>
+│   │   ├── <span class="file">backend.tf</span>            <span class="note"># Dev remote state config</span><br>
+│   │   ├── <span class="file">variables.tf</span>          <span class="note"># Variable declarations</span><br>
+│   │   ├── <span class="file">outputs.tf</span>            <span class="note"># Outputs</span><br>
+│   │   ├── <span class="file">versions.tf</span>           <span class="note"># Provider + terraform version</span><br>
+│   │   └── <span class="file">terraform.tfvars</span>      <span class="note"># Dev values (small, cheap)</span><br>
+│   │<br>
+│   ├── <span class="dir env-test">test/</span>                         <span class="note"># Test environment</span><br>
+│   │   ├── <span class="file">main.tf</span><br>
+│   │   ├── <span class="file">backend.tf</span>            <span class="note"># Test remote state config</span><br>
+│   │   ├── <span class="file">variables.tf</span><br>
+│   │   ├── <span class="file">outputs.tf</span><br>
+│   │   ├── <span class="file">versions.tf</span><br>
+│   │   └── <span class="file">terraform.tfvars</span>      <span class="note"># Test values (medium)</span><br>
+│   │<br>
+│   └── <span class="dir env-prod">prod/</span>                         <span class="note"># Production environment</span><br>
+│       ├── <span class="file">main.tf</span><br>
+│       ├── <span class="file">backend.tf</span>            <span class="note"># Prod remote state config</span><br>
+│       ├── <span class="file">variables.tf</span><br>
+│       ├── <span class="file">outputs.tf</span><br>
+│       ├── <span class="file">versions.tf</span><br>
+│       └── <span class="file">terraform.tfvars</span>      <span class="note"># Prod values (large, HA)</span><br>
+│<br>
+└── <span class="file">README.md</span>
+    </div>
+
+    <div class="info">💡 <strong>The Pattern:</strong> The <code>modules/</code> folder is where your actual infrastructure logic lives — written ONCE. Each <code>environments/</code> folder is just a thin wrapper that calls the module with different values. This eliminates duplication while keeping environments fully isolated.</div>
+  </div>
+
+  <!-- 4. Shared Modules -->
+  <div class="section" id="modules-shared">
+    <div class="section-header">
+      <div class="snum">4</div>
+      <div>
+        <div class="stitle">Build the Shared Module</div>
+        <div class="ssub">Write your infrastructure code ONCE — reuse it across all environments</div>
+      </div>
+    </div>
+
+    <p>The module is where all your real resources live. You write this once and all three environments use the same code — only the values differ.</p>
+
+    <div class="step-badge">📄 modules/webapp/versions.tf</div>
+    <pre>terraform {
+  required_version = <span class="st">"~&gt; 1.6"</span>
+  required_providers {
+    aws = {
+      source  = <span class="st">"hashicorp/aws"</span>
+      version = <span class="st">"~&gt; 5.0"</span>
+    }
+  }
+}</pre>
+
+    <div class="step-badge">📄 modules/webapp/variables.tf</div>
+    <pre><span class="cm"># Every value that changes between environments becomes a variable</span>
+
+variable <span class="st">"environment"</span> {
+  type        = string
+  description = <span class="st">"Environment name (dev/test/prod)"</span>
+  validation {
+    condition     = contains([<span class="st">"dev"</span>, <span class="st">"test"</span>, <span class="st">"prod"</span>], var.environment)
+    error_message = <span class="st">"Must be dev, test, or prod."</span>
+  }
+}
+
+variable <span class="st">"instance_type"</span> {
+  type        = string
+  description = <span class="st">"EC2 instance type"</span>
+}
+
+variable <span class="st">"instance_count"</span> {
+  type        = number
+  description = <span class="st">"Number of app servers"</span>
+  default     = 1
+}
+
+variable <span class="st">"db_instance_class"</span> {
+  type        = string
+  description = <span class="st">"RDS instance class"</span>
+}
+
+variable <span class="st">"db_multi_az"</span> {
+  type        = bool
+  description = <span class="st">"Enable Multi-AZ for RDS (true in prod)"</span>
+  default     = false
+}
+
+variable <span class="st">"db_password"</span> {
+  type      = string
+  sensitive = true
+}
+
+variable <span class="st">"vpc_cidr"</span> {
+  type    = string
+  default = <span class="st">"10.0.0.0/16"</span>
+}
+
+variable <span class="st">"tags"</span> {
+  type    = map(string)
+  default = {}
+}</pre>
+
+    <div class="step-badge">📄 modules/webapp/main.tf</div>
+    <pre><span class="cm"># Fetch latest Amazon Linux 2 AMI</span>
+data <span class="st">"aws_ami"</span> <span class="st">"al2"</span> {
+  most_recent = true
+  owners      = [<span class="st">"amazon"</span>]
+  filter { name = <span class="st">"name"</span>;              values = [<span class="st">"amzn2-ami-hvm-*-x86_64-gp2"</span>] }
+  filter { name = <span class="st">"virtualization-type"</span>; values = [<span class="st">"hvm"</span>] }
+}
+
+<span class="cm"># Common tags applied to all resources</span>
+locals {
+  common_tags = merge(var.tags, {
+    Environment = var.environment
+    ManagedBy   = <span class="st">"terraform"</span>
+  })
+  name_prefix = <span class="st">"webapp-${var.environment}"</span>
+}
+
+<span class="cm"># Security Group</span>
+resource <span class="st">"aws_security_group"</span> <span class="st">"app"</span> {
+  name        = <span class="st">"${local.name_prefix}-sg"</span>
+  description = <span class="st">"App security group"</span>
+
+  ingress {
+    from_port   = 80;  to_port = 80
+    protocol    = <span class="st">"tcp"</span>;  cidr_blocks = [<span class="st">"0.0.0.0/0"</span>]
+  }
+  egress {
+    from_port   = 0;  to_port = 0
+    protocol    = <span class="st">"-1"</span>;  cidr_blocks = [<span class="st">"0.0.0.0/0"</span>]
+  }
+  tags = merge(local.common_tags, { Name = <span class="st">"${local.name_prefix}-sg"</span> })
+}
+
+<span class="cm"># EC2 Instances — count varies per environment</span>
+resource <span class="st">"aws_instance"</span> <span class="st">"app"</span> {
+  count                  = var.instance_count
+  ami                    = data.aws_ami.al2.id
+  instance_type          = var.instance_type
+  vpc_security_group_ids = [aws_security_group.app.id]
+
+  tags = merge(local.common_tags, {
+    Name = <span class="st">"${local.name_prefix}-server-${count.index + 1}"</span>
+  })
+}
+
+<span class="cm"># RDS Database — size and HA vary per environment</span>
+resource <span class="st">"aws_db_instance"</span> <span class="st">"main"</span> {
+  identifier        = <span class="st">"${local.name_prefix}-db"</span>
+  engine            = <span class="st">"postgres"</span>
+  engine_version    = <span class="st">"15"</span>
+  instance_class    = var.db_instance_class
+  username          = <span class="st">"admin"</span>
+  password          = var.db_password
+  multi_az          = var.db_multi_az       <span class="cm"># false in dev/test, true in prod</span>
+  skip_final_snapshot = var.environment != <span class="st">"prod"</span>
+
+  <span class="cm"># Only protect prod database</span>
+  lifecycle {
+    prevent_destroy = false  <span class="cm"># Override per env using lifecycle if needed</span>
+  }
+
+  tags = merge(local.common_tags, { Name = <span class="st">"${local.name_prefix}-db"</span> })
+}</pre>
+
+    <div class="step-badge">📄 modules/webapp/outputs.tf</div>
+    <pre>output <span class="st">"instance_ids"</span>   { value = aws_instance.app[*].id }
+output <span class="st">"instance_ips"</span>   { value = aws_instance.app[*].public_ip }
+output <span class="st">"db_endpoint"</span>    { value = aws_db_instance.main.endpoint }
+output <span class="st">"sg_id"</span>          { value = aws_security_group.app.id }</pre>
+
+    <div class="tip">✅ <strong>Module is done.</strong> You will NEVER touch this folder again when deploying to different environments. Each environment just passes in different values.</div>
+  </div>
+
+  <!-- 5. Remote Backend Setup -->
+  <div class="section" id="backend-setup">
+    <div class="section-header">
+      <div class="snum">5</div>
+      <div>
+        <div class="stitle">Set Up the Remote Backend</div>
+        <div class="ssub">Create the S3 bucket and DynamoDB table that will hold all state files</div>
+      </div>
+    </div>
+
+    <p>This is a <strong>one-time setup</strong>. You create one S3 bucket that holds state for all environments — separated by key path. One DynamoDB table handles locking for all environments.</p>
+
+    <div class="warn">⚠️ This backend infrastructure itself should be created separately — NOT managed by the same Terraform code it stores state for. Create it manually or with a dedicated "bootstrap" Terraform config.</div>
+
+    <div class="step-badge">📄 bootstrap/main.tf — Run this once to create the backend</div>
+    <pre>provider <span class="st">"aws"</span> { region = <span class="st">"us-east-1"</span> }
+
+<span class="cm"># ─── S3 Bucket for all Terraform state ───────────────────────────</span>
+resource <span class="st">"aws_s3_bucket"</span> <span class="st">"tf_state"</span> {
+  bucket = <span class="st">"mycompany-terraform-state"</span>
+
+  lifecycle { prevent_destroy = true }   <span class="cm"># NEVER accidentally delete</span>
+}
+
+resource <span class="st">"aws_s3_bucket_versioning"</span> <span class="st">"tf_state"</span> {
+  bucket = aws_s3_bucket.tf_state.id
+  versioning_configuration { status = <span class="st">"Enabled"</span> }  <span class="cm"># Keep all state history</span>
+}
+
+resource <span class="st">"aws_s3_bucket_server_side_encryption_configuration"</span> <span class="st">"tf_state"</span> {
+  bucket = aws_s3_bucket.tf_state.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = <span class="st">"AES256"</span>
+    }
+  }
+}
+
+resource <span class="st">"aws_s3_bucket_public_access_block"</span> <span class="st">"tf_state"</span> {
+  bucket                  = aws_s3_bucket.tf_state.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+<span class="cm"># ─── DynamoDB Table for state locking ────────────────────────────</span>
+resource <span class="st">"aws_dynamodb_table"</span> <span class="st">"tf_lock"</span> {
+  name         = <span class="st">"terraform-state-lock"</span>
+  billing_mode = <span class="st">"PAY_PER_REQUEST"</span>   <span class="cm"># No capacity planning needed</span>
+  hash_key     = <span class="st">"LockID"</span>
+
+  attribute { name = <span class="st">"LockID"</span>; type = <span class="st">"S"</span> }
+
+  tags = { Name = <span class="st">"Terraform State Lock"</span>; ManagedBy = <span class="st">"terraform"</span> }
+}</pre>
+
+    <pre><span class="cm"># Run once to create the backend infrastructure</span>
+cd bootstrap/
+terraform init
+terraform apply</pre>
+
+    <p>After this runs, your S3 bucket exists and is ready to store state files for dev, test, and prod — in separate paths.</p>
+
+    <div class="info">📋 <strong>S3 bucket path convention used in this guide:</strong><br><br>
+      <code>mycompany-terraform-state/dev/webapp/terraform.tfstate</code><br>
+      <code>mycompany-terraform-state/test/webapp/terraform.tfstate</code><br>
+      <code>mycompany-terraform-state/prod/webapp/terraform.tfstate</code>
+    </div>
+  </div>
+
+  <!-- 6. Environment Configs -->
+  <div class="section" id="env-configs">
+    <div class="section-header">
+      <div class="snum">6</div>
+      <div>
+        <div class="stitle">Configure Each Environment</div>
+        <div class="ssub">Create the thin wrappers that call your module with environment-specific values</div>
+      </div>
+    </div>
+
+    <p>Each environment folder has the same 5 files — only the <strong>values</strong> differ. Here's exactly what goes in each file for all three environments.</p>
+
+    <hr class="divider">
+    <h2><span class="tag-dev">DEV</span> environments/dev/</h2>
+
+    <div class="step-badge">📄 environments/dev/backend.tf</div>
+    <pre>terraform {
+  backend <span class="st">"s3"</span> {
+    bucket         = <span class="st">"mycompany-terraform-state"</span>
+    key            = <span class="st">"dev/webapp/terraform.tfstate"</span>   <span class="cm"># ← dev path</span>
+    region         = <span class="st">"us-east-1"</span>
+    encrypt        = true
+    dynamodb_table = <span class="st">"terraform-state-lock"</span>
+  }
+}</pre>
+
+    <div class="step-badge">📄 environments/dev/versions.tf</div>
+    <pre>terraform {
+  required_version = <span class="st">"~&gt; 1.6"</span>
+  required_providers {
+    aws = { source = <span class="st">"hashicorp/aws"</span>; version = <span class="st">"~&gt; 5.0"</span> }
+  }
+}
+
+provider <span class="st">"aws"</span> { region = <span class="st">"us-east-1"</span> }</pre>
+
+    <div class="step-badge">📄 environments/dev/variables.tf</div>
+    <pre>variable <span class="st">"environment"</span>      { type = string }
+variable <span class="st">"instance_type"</span>     { type = string }
+variable <span class="st">"instance_count"</span>    { type = number }
+variable <span class="st">"db_instance_class"</span> { type = string }
+variable <span class="st">"db_multi_az"</span>       { type = bool }
+variable <span class="st">"db_password"</span>       { type = string; sensitive = true }</pre>
+
+    <div class="step-badge">📄 environments/dev/main.tf</div>
+    <pre><span class="cm"># Just calls the shared module — no resource code here!</span>
+module <span class="st">"webapp"</span> {
+  source = <span class="st">"../../modules/webapp"</span>
+
+  environment        = var.environment
+  instance_type      = var.instance_type
+  instance_count     = var.instance_count
+  db_instance_class  = var.db_instance_class
+  db_multi_az        = var.db_multi_az
+  db_password        = var.db_password
+
+  tags = {
+    Team    = <span class="st">"platform"</span>
+    Project = <span class="st">"webapp"</span>
+  }
+}</pre>
+
+    <div class="step-badge">📄 environments/dev/terraform.tfvars</div>
+    <pre><span class="cm"># Dev: small & cheap</span>
+environment       = <span class="st">"dev"</span>
+instance_type     = <span class="st">"t3.micro"</span>
+instance_count    = 1
+db_instance_class = <span class="st">"db.t3.micro"</span>
+db_multi_az       = false
+<span class="cm"># db_password set via env var: export TF_VAR_db_password="..."</span></pre>
+
+    <div class="step-badge">📄 environments/dev/outputs.tf</div>
+    <pre>output <span class="st">"instance_ips"</span>  { value = module.webapp.instance_ips }
+output <span class="st">"db_endpoint"</span>  { value = module.webapp.db_endpoint }</pre>
+
+    <hr class="divider">
+    <h2><span class="tag-test">TEST</span> environments/test/</h2>
+    <p>Same 5 files — only the backend key and tfvars values change.</p>
+
+    <div class="step-badge">📄 environments/test/backend.tf</div>
+    <pre>terraform {
+  backend <span class="st">"s3"</span> {
+    bucket         = <span class="st">"mycompany-terraform-state"</span>
+    key            = <span class="st">"test/webapp/terraform.tfstate"</span>  <span class="cm"># ← test path</span>
+    region         = <span class="st">"us-east-1"</span>
+    encrypt        = true
+    dynamodb_table = <span class="st">"terraform-state-lock"</span>
+  }
+}</pre>
+
+    <div class="step-badge">📄 environments/test/terraform.tfvars</div>
+    <pre><span class="cm"># Test: slightly bigger for realistic load testing</span>
+environment       = <span class="st">"test"</span>
+instance_type     = <span class="st">"t3.small"</span>
+instance_count    = 2
+db_instance_class = <span class="st">"db.t3.small"</span>
+db_multi_az       = false</pre>
+
+    <hr class="divider">
+    <h2><span class="tag-prod">PROD</span> environments/prod/</h2>
+
+    <div class="step-badge">📄 environments/prod/backend.tf</div>
+    <pre>terraform {
+  backend <span class="st">"s3"</span> {
+    bucket         = <span class="st">"mycompany-terraform-state"</span>
+    key            = <span class="st">"prod/webapp/terraform.tfstate"</span> <span class="cm"># ← prod path</span>
+    region         = <span class="st">"us-east-1"</span>
+    encrypt        = true
+    dynamodb_table = <span class="st">"terraform-state-lock"</span>
+  }
+}</pre>
+
+    <div class="step-badge">📄 environments/prod/terraform.tfvars</div>
+    <pre><span class="cm"># Prod: large, highly available, multi-AZ</span>
+environment       = <span class="st">"prod"</span>
+instance_type     = <span class="st">"t3.large"</span>
+instance_count    = 5
+db_instance_class = <span class="st">"db.r5.large"</span>
+db_multi_az       = true</pre>
+
+    <div class="tip">✅ <strong>What changed between environments?</strong> Only the <code>backend.tf</code> key path and the <code>terraform.tfvars</code> values. The structure, the module call, and the outputs are identical. This is the power of modules.</div>
+  </div>
+
+  <!-- 7. Deploy Each Env -->
+  <div class="section" id="deploy">
+    <div class="section-header">
+      <div class="snum">7</div>
+      <div>
+        <div class="stitle">Deploy Each Environment</div>
+        <div class="ssub">Step-by-step commands to initialize and apply each environment</div>
+      </div>
+    </div>
+
+    <p>Each environment is deployed independently by <code>cd</code>-ing into its folder and running the standard Terraform workflow.</p>
+
+    <h2>Deploy Dev <span class="tag-dev">DEV</span></h2>
+    <pre><span class="cm"># 1. Go into the dev environment folder</span>
+cd environments/dev/
+
+<span class="cm"># 2. Set your DB password as env var (never hardcode secrets!)</span>
+export TF_VAR_db_password=<span class="st">"dev-password-123"</span>
+
+<span class="cm"># 3. Initialize — downloads providers, connects to S3 backend</span>
+terraform init
+
+<span class="cm"># 4. Preview what will be created</span>
+terraform plan
+
+<span class="cm"># 5. Create dev infrastructure</span>
+terraform apply
+
+<span class="cm"># ✅ State saved to: s3://mycompany-terraform-state/dev/webapp/terraform.tfstate</span></pre>
+
+    <h2>Deploy Test <span class="tag-test">TEST</span></h2>
+    <pre><span class="cm"># Completely separate — won't touch dev state at all</span>
+cd environments/test/
+
+export TF_VAR_db_password=<span class="st">"test-password-456"</span>
+
+terraform init    <span class="cm"># Connects to test S3 key</span>
+terraform plan
+terraform apply
+
+<span class="cm"># ✅ State saved to: s3://mycompany-terraform-state/test/webapp/terraform.tfstate</span></pre>
+
+    <h2>Deploy Prod <span class="tag-prod">PROD</span></h2>
+    <pre><span class="cm"># Production — always plan to a file first, then review before applying</span>
+cd environments/prod/
+
+export TF_VAR_db_password=<span class="st">"prod-super-secret-999"</span>
+
+terraform init
+
+<span class="cm"># Save the plan to a file — review it carefully before applying!</span>
+terraform plan -out=prod.tfplan
+
+<span class="cm"># Only apply after thorough review</span>
+terraform apply prod.tfplan
+
+<span class="cm"># ✅ State saved to: s3://mycompany-terraform-state/prod/webapp/terraform.tfstate</span></pre>
+
+    <div class="warn">⚠️ <strong>Prod Rule:</strong> Never run <code>terraform apply -auto-approve</code> on prod. Always use <code>-out</code> to save the plan and review it before applying. In CI/CD, require a manual approval gate for prod.</div>
+
+    <h2>Verify State Is Isolated</h2>
+    <pre><span class="cm"># Confirm each env has its own independent state</span>
+
+cd environments/dev/  &amp;&amp; terraform state list
+<span class="cm"># module.webapp.aws_instance.app[0]
+# module.webapp.aws_db_instance.main
+# module.webapp.aws_security_group.app</span>
+
+cd environments/prod/ &amp;&amp; terraform state list
+<span class="cm"># module.webapp.aws_instance.app[0]
+# module.webapp.aws_instance.app[1]
+# ...
+# module.webapp.aws_instance.app[4]     ← 5 instances in prod
+# module.webapp.aws_db_instance.main
+# module.webapp.aws_security_group.app</span></pre>
+  </div>
+
+  <!-- 8. State Isolation Strategy -->
+  <div class="section" id="state-isolation">
+    <div class="section-header">
+      <div class="snum">8</div>
+      <div>
+        <div class="stitle">State Isolation Strategy</div>
+        <div class="ssub">How production teams think about keeping environments truly separate</div>
+      </div>
+    </div>
+
+    <h2>Level 1 — Same Account, Separate Keys (Minimum)</h2>
+    <p>All environments in one AWS account, separated only by S3 state key. Fine for small teams and early projects.</p>
+    <div class="tree">
+AWS Account: 111111111111 (single account)<br>
+├── <span class="env-dev">Dev resources</span>     → state: s3://tf-state/<span class="env-dev">dev</span>/webapp/terraform.tfstate<br>
+├── <span class="env-test">Test resources</span>    → state: s3://tf-state/<span class="env-test">test</span>/webapp/terraform.tfstate<br>
+└── <span class="env-prod">Prod resources</span>    → state: s3://tf-state/<span class="env-prod">prod</span>/webapp/terraform.tfstate
+    </div>
+
+    <h2>Level 2 — Separate AWS Accounts <span class="tag-std">ENTERPRISE STANDARD</span></h2>
+    <p>Each environment lives in a completely separate AWS account. This is what AWS recommends and what large companies do. A mistake in dev literally cannot affect prod — they're different accounts.</p>
+    <div class="tree">
+AWS Organization<br>
+├── Account: 111111111111 (dev-account)<br>
+│   └── <span class="env-dev">Dev resources + Dev state bucket</span><br>
+├── Account: 222222222222 (test-account)<br>
+│   └── <span class="env-test">Test resources + Test state bucket</span><br>
+└── Account: 333333333333 (prod-account)<br>
+    └── <span class="env-prod">Prod resources + Prod state bucket</span>
+    </div>
+
+    <pre><span class="cm"># Each environment uses a different AWS profile</span>
+
+<span class="cm"># environments/dev/versions.tf</span>
+provider <span class="st">"aws"</span> {
+  region  = <span class="st">"us-east-1"</span>
+  profile = <span class="st">"dev-account"</span>    <span class="cm"># ← dev AWS credentials</span>
+}
+
+<span class="cm"># environments/prod/versions.tf</span>
+provider <span class="st">"aws"</span> {
+  region  = <span class="st">"us-east-1"</span>
+  profile = <span class="st">"prod-account"</span>   <span class="cm"># ← prod AWS credentials</span>
+  <span class="cm"># OR use assume_role for cross-account access</span>
+  assume_role {
+    role_arn = <span class="st">"arn:aws:iam::333333333333:role/TerraformRole"</span>
+  }
+}</pre>
+
+    <h2>State Locking Explained</h2>
+    <p>When you run <code>terraform apply</code>, DynamoDB creates a lock entry. If another engineer (or CI/CD job) tries to apply at the same time, they get an error — not silent corruption.</p>
+
+    <pre><span class="cm"># What happens when two people apply simultaneously:</span>
+
+<span class="cm"># Engineer A runs apply → DynamoDB creates lock</span>
+<span class="cm"># LockID = "mycompany-terraform-state/prod/webapp/terraform.tfstate"</span>
+
+<span class="cm"># Engineer B runs apply at same time → gets this error:</span>
+<span class="cm"># Error: Error locking state: ConditionalCheckFailedException</span>
+<span class="cm"># Lock Info: ID=abc-123, Who=engineer-a@company.com</span>
+<span class="cm"># Lock is released automatically when Engineer A finishes</span>
+
+<span class="cm"># If apply crashes and lock gets stuck:</span>
+terraform force-unlock &lt;lock-id&gt;</pre>
+  </div>
+
+  <!-- 9. Migrate Existing Code -->
+  <div class="section" id="migrate">
+    <div class="section-header">
+      <div class="snum">9</div>
+      <div>
+        <div class="stitle">Migrate Your Existing Code</div>
+        <div class="ssub">How to restructure your current single-env Terraform into the multi-env pattern</div>
+      </div>
+    </div>
+
+    <p>You mentioned you already have Terraform code for one environment with a remote backend. Here's exactly how to migrate it to the multi-env structure without destroying anything.</p>
+
+    <div class="step-badge">Step 1 — Understand your current state</div>
+    <pre><span class="cm"># See what you currently have</span>
+terraform state list
+
+<span class="cm"># Pull current backend config</span>
+cat backend.tf  <span class="cm"># Note down your current bucket, key, region</span></pre>
+
+    <div class="step-badge">Step 2 — Create the new folder structure</div>
+    <pre>mkdir -p environments/dev environments/test environments/prod
+mkdir -p modules/webapp</pre>
+
+    <div class="step-badge">Step 3 — Move your existing resources into the module</div>
+    <pre><span class="cm"># Copy your current resource code into the module</span>
+cp main.tf      modules/webapp/main.tf
+cp variables.tf modules/webapp/variables.tf
+cp outputs.tf   modules/webapp/outputs.tf
+
+<span class="cm"># Clean up the module — remove backend configs from it</span>
+<span class="cm"># Modules should NOT have backend blocks</span></pre>
+
+    <div class="step-badge">Step 4 — Create the dev environment pointing to EXISTING state</div>
+    <pre><span class="cm"># environments/dev/backend.tf</span>
+<span class="cm"># Use the EXACT SAME bucket/key/region as your current backend</span>
+<span class="cm"># This way Terraform finds the existing state — nothing gets recreated</span>
+terraform {
+  backend <span class="st">"s3"</span> {
+    bucket         = <span class="st">"your-existing-bucket"</span>         <span class="cm"># ← same as before</span>
+    key            = <span class="st">"your-existing-key.tfstate"</span>    <span class="cm"># ← same as before</span>
+    region         = <span class="st">"us-east-1"</span>
+    encrypt        = true
+    dynamodb_table = <span class="st">"terraform-state-lock"</span>
+  }
+}</pre>
+
+    <div class="step-badge">Step 5 — Handle the state address change</div>
+    <pre><span class="cm"># Your resources were previously at root level:</span>
+<span class="cm"># aws_instance.web</span>
+<span class="cm"># aws_security_group.app</span>
+
+<span class="cm"># Now they'll be inside a module:</span>
+<span class="cm"># module.webapp.aws_instance.web</span>
+<span class="cm"># module.webapp.aws_security_group.app</span>
+
+<span class="cm"># You must move state addresses to match the new structure</span>
+cd environments/dev/
+terraform init
+
+<span class="cm"># Move each resource into the module namespace</span>
+terraform state mv aws_instance.web           module.webapp.aws_instance.web
+terraform state mv aws_security_group.app     module.webapp.aws_security_group.app
+terraform state mv aws_db_instance.main       module.webapp.aws_db_instance.main
+<span class="cm"># ... repeat for every resource</span></pre>
+
+    <div class="step-badge">Step 6 — Verify with plan</div>
+    <pre><span class="cm"># Plan should show: No changes. Infrastructure is up-to-date.</span>
+<span class="cm"># If it shows creates/destroys, check your state mv commands</span>
+terraform plan</pre>
+
+    <div class="step-badge">Step 7 — Create test and prod from scratch</div>
+    <pre><span class="cm"># Test and Prod are new — their state files don't exist yet</span>
+cd environments/test/
+terraform init    <span class="cm"># Creates new empty state at test/webapp/terraform.tfstate</span>
+terraform plan    <span class="cm"># Shows everything to be created fresh</span>
+terraform apply
+
+cd environments/prod/
+terraform init
+terraform plan
+terraform apply</pre>
+
+    <div class="tip">💡 <strong>The key insight for migration:</strong> As long as <code>backend.tf</code> in dev points to the SAME S3 key as before, Terraform will find the existing state and <code>terraform plan</code> will show no changes — after you've done the <code>state mv</code> commands.</div>
+  </div>
+
+  <!-- 10. CI/CD per Environment -->
+  <div class="section" id="cicd">
+    <div class="section-header">
+      <div class="snum">10</div>
+      <div>
+        <div class="stitle">CI/CD Pipeline per Environment</div>
+        <div class="ssub">Automate deployments with proper gates between environments</div>
+      </div>
+    </div>
+
+    <p>The golden rule: <strong>code promotes through environments</strong> — dev → test → prod. Each promotion requires the previous environment to be healthy.</p>
+
+    <div class="flow">
+      <div class="fstep">PR → Dev</div>
+      <div class="farrow">→</div>
+      <div class="fstep">Auto Apply Dev</div>
+      <div class="farrow">→</div>
+      <div class="fstep">Tests Pass</div>
+      <div class="farrow">→</div>
+      <div class="fstep">Apply Test</div>
+      <div class="farrow">→</div>
+      <div class="fstep">👤 Approval</div>
+      <div class="farrow">→</div>
+      <div class="fstep">Apply Prod</div>
+    </div>
+
+    <div class="step-badge">📄 .github/workflows/terraform.yml</div>
+    <pre>name: Terraform Multi-Environment Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  TF_VERSION: <span class="st">"1.6.3"</span>
+
+jobs:
+
+  <span class="cm"># ─── DEV ─────────────────────────────────────────────────────────</span>
+  dev:
+    name: Deploy Dev
+    runs-on: ubuntu-latest
+    environment: dev
+    defaults:
+      run:
+        working-directory: environments/dev   <span class="cm"># ← run in dev folder</span>
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: <span class="st">"${{ env.TF_VERSION }}"</span> }
+
+      - name: Auth AWS (Dev Account)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: <span class="st">"arn:aws:iam::111111111111:role/TerraformRole"</span>
+          aws-region: us-east-1
+
+      - run: terraform init
+      - run: terraform validate
+      - run: terraform plan  -out=tfplan
+        env: { TF_VAR_db_password: <span class="st">"${{ secrets.DEV_DB_PASSWORD }}"</span> }
+
+      - name: Apply Dev
+        if: github.ref == 'refs/heads/main'
+        run: terraform apply tfplan
+
+
+  <span class="cm"># ─── TEST ────────────────────────────────────────────────────────</span>
+  test:
+    name: Deploy Test
+    runs-on: ubuntu-latest
+    environment: test
+    needs: [dev]            <span class="cm"># ← waits for dev to succeed</span>
+    if: github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: environments/test
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: <span class="st">"${{ env.TF_VERSION }}"</span> }
+      - name: Auth AWS (Test Account)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: <span class="st">"arn:aws:iam::222222222222:role/TerraformRole"</span>
+          aws-region: us-east-1
+      - run: terraform init
+      - run: terraform plan -out=tfplan
+        env: { TF_VAR_db_password: <span class="st">"${{ secrets.TEST_DB_PASSWORD }}"</span> }
+      - run: terraform apply tfplan
+
+
+  <span class="cm"># ─── PROD ────────────────────────────────────────────────────────</span>
+  prod:
+    name: Deploy Prod
+    runs-on: ubuntu-latest
+    environment: prod       <span class="cm"># ← GitHub environment with required reviewers</span>
+    needs: [test]           <span class="cm"># ← waits for test to succeed</span>
+    if: github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: environments/prod
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: <span class="st">"${{ env.TF_VERSION }}"</span> }
+      - name: Auth AWS (Prod Account)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: <span class="st">"arn:aws:iam::333333333333:role/TerraformRole"</span>
+          aws-region: us-east-1
+      - run: terraform init
+      - run: terraform plan -out=tfplan
+        env: { TF_VAR_db_password: <span class="st">"${{ secrets.PROD_DB_PASSWORD }}"</span> }
+      - name: Apply Prod   <span class="cm"># ← requires manual approval in GitHub settings</span>
+        run: terraform apply tfplan</pre>
+
+    <div class="tip">💡 <strong>Pro Tip:</strong> In GitHub, go to Settings → Environments → prod → Add required reviewers. This means someone must manually click "Approve" before prod applies — even if all jobs succeed automatically.</div>
+  </div>
+
+  <!-- 11. Cheat Sheet -->
+  <div class="section" id="cheatsheet">
+    <div class="section-header">
+      <div class="snum">11</div>
+      <div>
+        <div class="stitle">Quick Reference Cheat Sheet</div>
+        <div class="ssub">Everything you need day-to-day</div>
+      </div>
+    </div>
+
+    <h2>Daily Commands</h2>
+    <table>
+      <thead><tr><th>Task</th><th>Command</th></tr></thead>
+      <tbody>
+        <tr><td>Deploy to dev</td><td><code>cd environments/dev && terraform apply</code></td></tr>
+        <tr><td>Deploy to test</td><td><code>cd environments/test && terraform apply</code></td></tr>
+        <tr><td>Safe prod deploy</td><td><code>cd environments/prod && terraform plan -out=p.tfplan && terraform apply p.tfplan</code></td></tr>
+        <tr><td>List dev resources</td><td><code>cd environments/dev && terraform state list</code></td></tr>
+        <tr><td>Inspect a resource</td><td><code>terraform state show module.webapp.aws_instance.app[0]</code></td></tr>
+        <tr><td>Destroy dev only</td><td><code>cd environments/dev && terraform destroy</code></td></tr>
+        <tr><td>Check outputs</td><td><code>terraform output</code></td></tr>
+        <tr><td>Refresh state</td><td><code>terraform apply -refresh-only</code></td></tr>
+      </tbody>
+    </table>
+
+    <h2>The 3 Things That Differ Per Environment</h2>
+    <table>
+      <thead><tr><th>File</th><th>What Changes</th><th>What Stays the Same</th></tr></thead>
+      <tbody>
+        <tr><td><code>backend.tf</code></td><td>The S3 <strong>key path</strong> (dev/ test/ prod/)</td><td>Bucket name, region, DynamoDB table</td></tr>
+        <tr><td><code>terraform.tfvars</code></td><td>Instance sizes, counts, HA settings</td><td>Variable names and structure</td></tr>
+        <tr><td><code>versions.tf</code></td><td>AWS profile or assume_role ARN</td><td>Provider type, Terraform version</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Common Mistakes to Avoid</h2>
+    <table>
+      <thead><tr><th>❌ Mistake</th><th>✅ Correct Approach</th></tr></thead>
+      <tbody>
+        <tr><td>Running <code>terraform apply</code> from the wrong folder</td><td>Always <code>pwd</code> and check which env you're in</td></tr>
+        <tr><td>Hardcoding passwords in <code>terraform.tfvars</code></td><td>Use <code>export TF_VAR_db_password=...</code> or Secrets Manager</td></tr>
+        <tr><td>Same S3 key for two environments</td><td>Every env must have a unique key path in <code>backend.tf</code></td></tr>
+        <tr><td>Skipping <code>terraform plan</code> in prod</td><td>Always plan first, save with <code>-out</code>, then apply that plan</td></tr>
+        <tr><td>Editing state file manually</td><td>Use <code>terraform state mv</code> and <code>terraform import</code> commands</td></tr>
+        <tr><td>Forgetting <code>terraform init</code> after changing backend</td><td>Always <code>init</code> when switching environments or changing backend</td></tr>
+      </tbody>
+    </table>
+
+    <h2>S3 State Structure at a Glance</h2>
+    <div class="tree">
+S3: mycompany-terraform-state/<br>
+├── <span class="env-dev">dev/webapp/terraform.tfstate</span>      <span class="note"># 1 server, small DB</span><br>
+├── <span class="env-test">test/webapp/terraform.tfstate</span>     <span class="note"># 2 servers, medium DB</span><br>
+└── <span class="env-prod">prod/webapp/terraform.tfstate</span>     <span class="note"># 5 servers, large HA DB</span><br>
+<br>
+DynamoDB: terraform-state-lock<br>
+└── Handles locking for ALL environments simultaneously
+    </div>
+  </div>
+
+  <div class="footer">
+    🏗️ Terraform Multi-Environment Guide &nbsp;|&nbsp; Industry Standard: Directory-per-Environment &nbsp;|&nbsp; Terraform v1.x
+  </div>
+
+</div>
+</body>
+</html>

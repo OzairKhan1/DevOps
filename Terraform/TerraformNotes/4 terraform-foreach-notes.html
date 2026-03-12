@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terraform for_each — Complete Notes</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1e2d47;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #a78bfa;
+    --green: #34d399;
+    --red: #f87171;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --code-bg: #0d1117;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 60px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    margin-bottom: 64px;
+    animation: fadeDown 0.8s ease both;
+  }
+
+  .badge {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(167,139,250,0.15));
+    border: 1px solid rgba(0,212,255,0.3);
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-size: clamp(36px, 6vw, 64px);
+    font-weight: 800;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--accent3) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 16px;
+    font-weight: 400;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Section cards */
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+    animation: fadeUp 0.6s ease both;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+
+  .section:hover {
+    border-color: rgba(0,212,255,0.3);
+    transform: translateY(-2px);
+  }
+
+  .section::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .section:hover::before { opacity: 1; }
+
+  .section:nth-child(2) { animation-delay: 0.1s; }
+  .section:nth-child(3) { animation-delay: 0.2s; }
+  .section:nth-child(4) { animation-delay: 0.3s; }
+  .section:nth-child(5) { animation-delay: 0.4s; }
+  .section:nth-child(6) { animation-delay: 0.5s; }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+
+  .section-num {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 14px;
+    color: #000;
+    flex-shrink: 0;
+  }
+
+  .section-num.orange { background: linear-gradient(135deg, var(--accent2), #ff9a5c); }
+  .section-num.purple { background: linear-gradient(135deg, var(--accent3), #c4b5fd); }
+  .section-num.green  { background: linear-gradient(135deg, var(--green), #6ee7b7); }
+  .section-num.red    { background: linear-gradient(135deg, var(--red), #fca5a5); }
+
+  h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  h2 span {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent);
+    font-size: 18px;
+  }
+
+  p {
+    color: #94a3b8;
+    line-height: 1.7;
+    margin-bottom: 16px;
+    font-size: 15px;
+  }
+
+  /* Code blocks */
+  .code-wrap {
+    position: relative;
+    margin: 16px 0;
+  }
+
+  .code-label {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+    padding: 3px 8px;
+    background: var(--surface2);
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13.5px;
+    line-height: 1.8;
+  }
+
+  /* Syntax highlighting */
+  .kw  { color: #ff79c6; }   /* keywords */
+  .fn  { color: #50fa7b; }   /* functions */
+  .str { color: #f1fa8c; }   /* strings */
+  .var { color: #8be9fd; }   /* variables */
+  .num { color: #bd93f9; }   /* numbers */
+  .cmt { color: #6272a4; font-style: italic; } /* comments */
+  .val { color: #ffb86c; }   /* values */
+
+  /* Output box */
+  .output-box {
+    background: linear-gradient(135deg, rgba(52,211,153,0.05), rgba(0,212,255,0.05));
+    border: 1px solid rgba(52,211,153,0.2);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-top: 16px;
+  }
+
+  .output-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .output-label::before {
+    content: '▶';
+    font-size: 8px;
+  }
+
+  .output-box pre {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: var(--green);
+  }
+
+  /* Rule boxes */
+  .rule-box {
+    background: linear-gradient(135deg, rgba(0,212,255,0.05), rgba(167,139,250,0.05));
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 20px 0;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  .rule-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .rule-box p { margin: 0; color: #cbd5e1; }
+
+  .warn-box {
+    background: rgba(248,113,113,0.07);
+    border-color: rgba(248,113,113,0.25);
+  }
+
+  .warn-box p { color: #fca5a5; }
+
+  /* Comparison table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+
+  th {
+    background: var(--surface2);
+    padding: 12px 16px;
+    text-align: left;
+    color: var(--accent);
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(30,45,71,0.5);
+    color: #94a3b8;
+    vertical-align: top;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  td:first-child { color: var(--accent3); font-weight: 700; }
+
+  /* Divider */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 24px 0;
+  }
+
+  /* Two col */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 16px 0;
+  }
+
+  @media (max-width: 640px) {
+    .two-col { grid-template-columns: 1fr; }
+  }
+
+  .col-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  .col-card .col-title {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .col-card.good .col-title { color: var(--green); }
+  .col-card.bad  .col-title { color: var(--red); }
+
+  .col-card pre {
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-size: 12.5px;
+  }
+
+  /* Summary table at end */
+  .summary {
+    background: linear-gradient(135deg, var(--surface), #151f35);
+    border: 1px solid rgba(0,212,255,0.2);
+  }
+
+  /* Animations */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <header>
+    <div class="badge">Terraform • IaC • Complete Reference</div>
+    <h1>for_each Loop</h1>
+    <p class="subtitle">All variations · Examples · Output · Best Practices</p>
+  </header>
+
+  <!-- Section 1: What is for_each -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">01</div>
+      <h2>What is <span>for_each</span>?</h2>
+    </div>
+    <p>
+      <code style="color:var(--accent);font-family:'JetBrains Mono',monospace;">for_each</code> is a meta-argument in Terraform that lets you create <strong style="color:#fff">multiple instances</strong> of a resource or module from a single block — by looping over a map or set.
+    </p>
+    <div class="rule-box">
+      <div class="rule-icon">⚡</div>
+      <p><strong style="color:#fff">Golden Rule:</strong> <code style="font-family:'JetBrains Mono',monospace;color:var(--accent)">for_each</code> only accepts a <strong style="color:#fff">Map</strong> or a <strong style="color:#fff">Set</strong>. It will error on a plain list. You must convert using <code style="font-family:'JetBrains Mono',monospace;color:var(--accent2)">toset()</code> or an expression.</p>
+    </div>
+    <div class="two-col">
+      <div class="col-card good">
+        <div class="col-title">✅ Valid</div>
+        <pre><span class="cmt"># Map</span>
+for_each = var.tags
+
+<span class="cmt"># Set</span>
+for_each = <span class="fn">toset</span>([<span class="str">"a"</span>, <span class="str">"b"</span>])</pre>
+      </div>
+      <div class="col-card bad">
+        <div class="col-title">❌ Invalid</div>
+        <pre><span class="cmt"># Plain list — will ERROR</span>
+for_each = [<span class="str">"a"</span>, <span class="str">"b"</span>]
+
+<span class="cmt"># List variable — will ERROR</span>
+for_each = var.my_list</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 2: toset() with list -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num orange">02</div>
+      <h2>Option 1 — List → <span>toset()</span></h2>
+    </div>
+    <p>When you have a plain list of strings or numbers, wrap it with <code style="color:var(--accent2);font-family:'JetBrains Mono',monospace">toset()</code> to convert it into a set.</p>
+
+    <div class="code-wrap">
+      <div class="code-label">variables.tf</div>
+      <pre><span class="kw">variable</span> <span class="str">"environments"</span> {
+  <span class="kw">type</span>    = <span class="fn">list</span>(<span class="kw">string</span>)
+  <span class="kw">default</span> = [<span class="str">"dev"</span>, <span class="str">"staging"</span>, <span class="str">"prod"</span>]
+}</pre>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-label">main.tf</div>
+      <pre><span class="kw">resource</span> <span class="str">"aws_s3_bucket"</span> <span class="str">"env_buckets"</span> {
+  <span class="kw">for_each</span> = <span class="fn">toset</span>(<span class="var">var.environments</span>)  <span class="cmt"># convert list → set</span>
+
+  bucket = <span class="str">"myapp-${each.value}-bucket"</span>   <span class="cmt"># each.value = "dev" / "staging" / "prod"</span>
+
+  <span class="kw">tags</span> = {
+    Name = <span class="str">"${each.value}"</span>
+  }
+}</pre>
+    </div>
+
+    <div class="output-box">
+      <div class="output-label">Resources Created (3 S3 Buckets)</div>
+      <pre>aws_s3_bucket.env_buckets["dev"]      → myapp-dev-bucket
+aws_s3_bucket.env_buckets["staging"]  → myapp-staging-bucket
+aws_s3_bucket.env_buckets["prod"]     → myapp-prod-bucket</pre>
+    </div>
+
+    <div class="rule-box" style="margin-top:16px">
+      <div class="rule-icon">💡</div>
+      <p>With <code style="font-family:'JetBrains Mono',monospace;color:var(--accent)">toset()</code>, you only have <strong style="color:#fff">each.value</strong> — there is no each.key (or each.key = each.value). Duplicates are automatically removed.</p>
+    </div>
+  </div>
+
+  <!-- Section 3: Map directly -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num purple">03</div>
+      <h2>Option 2 — Map directly (<span>each.key / each.value</span>)</h2>
+    </div>
+    <p>When your variable is already a <code style="color:var(--accent3);font-family:'JetBrains Mono',monospace">map</code>, pass it directly. You get both <code style="color:var(--accent);font-family:'JetBrains Mono',monospace">each.key</code> and <code style="color:var(--accent);font-family:'JetBrains Mono',monospace">each.value</code>.</p>
+
+    <div class="code-wrap">
+      <div class="code-label">variables.tf</div>
+      <pre><span class="kw">variable</span> <span class="str">"instance_types"</span> {
+  <span class="kw">type</span> = <span class="fn">map</span>(<span class="kw">string</span>)
+  <span class="kw">default</span> = {
+    dev     = <span class="str">"t2.micro"</span>
+    staging = <span class="str">"t2.medium"</span>
+    prod    = <span class="str">"t3.large"</span>
+  }
+}</pre>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-label">main.tf</div>
+      <pre><span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="str">"servers"</span> {
+  <span class="kw">for_each</span>      = <span class="var">var.instance_types</span>   <span class="cmt"># map used directly — no conversion</span>
+
+  ami           = <span class="str">"ami-0c55b159cbfafe1f0"</span>
+  instance_type = <span class="var">each.value</span>           <span class="cmt"># "t2.micro" / "t2.medium" / "t3.large"</span>
+
+  <span class="kw">tags</span> = {
+    Name        = <span class="str">"${each.key}-server"</span>  <span class="cmt"># "dev" / "staging" / "prod"</span>
+    Environment = <span class="var">each.key</span>
+  }
+}</pre>
+    </div>
+
+    <div class="output-box">
+      <div class="output-label">Resources Created (3 EC2 Instances)</div>
+      <pre>aws_instance.servers["dev"]     → ami-xxx  t2.micro   Name=dev-server
+aws_instance.servers["staging"] → ami-xxx  t2.medium  Name=staging-server
+aws_instance.servers["prod"]    → ami-xxx  t3.large   Name=prod-server</pre>
+    </div>
+  </div>
+
+  <!-- Section 4: List of objects -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num green">04</div>
+      <h2>Option 3 — List of Objects → <span>for expression</span></h2>
+    </div>
+    <p>When you have a list of objects (complex types), you must convert them to a map using a <code style="color:var(--green);font-family:'JetBrains Mono',monospace">for</code> expression first.</p>
+
+    <div class="code-wrap">
+      <div class="code-label">variables.tf</div>
+      <pre><span class="kw">variable</span> <span class="str">"users"</span> {
+  <span class="kw">type</span> = <span class="fn">list</span>(<span class="fn">object</span>({
+    name = <span class="kw">string</span>
+    role = <span class="kw">string</span>
+  }))
+  <span class="kw">default</span> = [
+    { name = <span class="str">"Ali"</span>,  role = <span class="str">"admin"</span> },
+    { name = <span class="str">"Sara"</span>, role = <span class="str">"dev"</span>   },
+    { name = <span class="str">"John"</span>, role = <span class="str">"ops"</span>   }
+  ]
+}</pre>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-label">main.tf</div>
+      <pre><span class="kw">resource</span> <span class="str">"aws_iam_user"</span> <span class="str">"team"</span> {
+  <span class="cmt"># Convert list of objects → map using for expression</span>
+  <span class="cmt"># Syntax: { for item in list : item.unique_key => item }</span>
+  <span class="kw">for_each</span> = { <span class="kw">for</span> <span class="var">u</span> <span class="kw">in</span> <span class="var">var.users</span> : <span class="var">u.name</span> => <span class="var">u</span> }
+
+  name = <span class="var">each.key</span>           <span class="cmt"># "Ali" / "Sara" / "John"</span>
+
+  <span class="kw">tags</span> = {
+    Role = <span class="var">each.value.role</span>   <span class="cmt"># "admin" / "dev" / "ops"</span>
+    Name = <span class="var">each.key</span>
+  }
+}</pre>
+    </div>
+
+    <div class="output-box">
+      <div class="output-label">Resources Created (3 IAM Users)</div>
+      <pre>aws_iam_user.team["Ali"]  → name=Ali  Role=admin
+aws_iam_user.team["Sara"] → name=Sara Role=dev
+aws_iam_user.team["John"] → name=John Role=ops</pre>
+    </div>
+
+    <div class="rule-box">
+      <div class="rule-icon">💡</div>
+      <p>The key you choose (<code style="font-family:'JetBrains Mono',monospace;color:var(--green)">u.name</code> here) must be <strong style="color:#fff">unique</strong> across all items — Terraform uses it to track the resource in state.</p>
+    </div>
+  </div>
+<!-- Bonus Section: Common Confusion With For-Each Loop -->
+  <div class="section" style="border-color: rgba(255,107,53,0.3); animation-delay: 0.6s;">
+    <div class="section-header">
+      <div class="section-num orange">💬</div>
+      <h2>Common Confusion — <span>each.key vs object key</span></h2>
+    </div>
+
+    <p>Coming from Python, it's natural to think <code style="font-family:'JetBrains Mono',monospace;color:var(--accent)">each.key</code> refers to the field name inside the object (like <code style="font-family:'JetBrains Mono',monospace;color:var(--accent2)">"name"</code> or <code style="font-family:'JetBrains Mono',monospace;color:var(--accent2)">"role"</code>). But in Terraform it means something completely different.</p>
+
+    <hr class="divider">
+
+    <h3 style="color:#fff; margin-bottom:12px; font-size:16px;">In Python — key is the field name inside the dict</h3>
+    <div class="code-wrap">
+      <div class="code-label">Python</div>
+      <pre><span class="var">user</span> = { <span class="str">"name"</span>: <span class="str">"Ali"</span>, <span class="str">"role"</span>: <span class="str">"admin"</span> }
+<span class="cmt">#          ↑ key     ↑ value   ↑ key     ↑ value</span>
+
+<span class="kw">for</span> <span class="var">k</span>, <span class="var">v</span> <span class="kw">in</span> <span class="var">user</span>.items():
+    <span class="fn">print</span>(<span class="var">k</span>, <span class="var">v</span>)
+<span class="cmt"># name  Ali</span>
+<span class="cmt"># role  admin</span></pre>
+    </div>
+
+    <hr class="divider">
+
+    <h3 style="color:#fff; margin-bottom:12px; font-size:16px;">In Terraform — <code style="font-family:'JetBrains Mono',monospace;color:var(--accent)">each.key</code> is the map identifier YOU chose</h3>
+
+    <p>When you write the <code style="font-family:'JetBrains Mono',monospace;color:var(--accent3)">for</code> expression, you are building a <strong style="color:#fff">brand new map</strong> and you decide what becomes the key:</p>
+
+    <div class="code-wrap">
+      <div class="code-label">Terraform — for expression breakdown</div>
+      <pre><span class="kw">for_each</span> = { <span class="kw">for</span> <span class="var">u</span> <span class="kw">in</span> <span class="var">var.users</span> : <span class="var">u.name</span> => <span class="var">u</span> }
+<span class="cmt">#                                      ↑             ↑</span>
+<span class="cmt">#                              "Ali" becomes       whole object</span>
+<span class="cmt">#                               the map KEY        is the VALUE</span></pre>
+    </div>
+
+    <p>Terraform internally builds this map before looping:</p>
+
+    <div class="code-wrap">
+      <div class="code-label">Map Terraform builds internally</div>
+      <pre>{
+  <span class="str">"Ali"</span>  = { name = <span class="str">"Ali"</span>,  role = <span class="str">"admin"</span> }   <span class="cmt"># key="Ali"  value=whole object</span>
+  <span class="str">"Sara"</span> = { name = <span class="str">"Sara"</span>, role = <span class="str">"dev"</span>   }   <span class="cmt"># key="Sara" value=whole object</span>
+  <span class="str">"John"</span> = { name = <span class="str">"John"</span>, role = <span class="str">"ops"</span>   }   <span class="cmt"># key="John" value=whole object</span>
+}</pre>
+    </div>
+
+    <p>Now <code style="font-family:'JetBrains Mono',monospace;color:var(--accent)">each.key</code> and <code style="font-family:'JetBrains Mono',monospace;color:var(--accent)">each.value</code> make sense:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Expression</th>
+          <th>What it refers to</th>
+          <th>Example value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>each.key</td>
+          <td>The identifier you picked (u.name)</td>
+          <td>"Ali"</td>
+        </tr>
+        <tr>
+          <td>each.value</td>
+          <td>The whole object</td>
+          <td>{ name="Ali", role="admin" }</td>
+        </tr>
+        <tr>
+          <td>each.value.role</td>
+          <td>A field inside the object</td>
+          <td>"admin"</td>
+        </tr>
+        <tr>
+          <td>each.value.name</td>
+          <td>Another field inside the object</td>
+          <td>"Ali"</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <hr class="divider">
+
+    <div class="rule-box" style="background: linear-gradient(135deg, rgba(255,107,53,0.07), rgba(255,107,53,0.03)); border-color: rgba(255,107,53,0.25);">
+      <div class="rule-icon">🧠</div>
+      <div>
+        <p style="margin-bottom:8px;"><strong style="color:#fff">The key mental shift from Python:</strong></p>
+        <p style="margin-bottom:4px;">Python → <code style="font-family:'JetBrains Mono',monospace;color:var(--accent2)">key</code> = field name inside the object (<code style="font-family:'JetBrains Mono',monospace">"name"</code>, <code style="font-family:'JetBrains Mono',monospace">"role"</code>)</p>
+        <p>Terraform → <code style="font-family:'JetBrains Mono',monospace;color:var(--accent)">each.key</code> = the unique identifier <strong style="color:#fff">you chose</strong> to represent the whole object in the map (<code style="font-family:'JetBrains Mono',monospace">"Ali"</code>, <code style="font-family:'JetBrains Mono',monospace">"Sara"</code>)</p>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <h3 style="color:#fff; margin-bottom:12px; font-size:16px;">You could choose a different key too</h3>
+    <div class="two-col">
+      <div class="col-card good">
+        <div class="col-title">name as key</div>
+        <pre><span class="kw">for</span> <span class="var">u</span> <span class="kw">in</span> <span class="var">var.users</span> : <span class="var">u.name</span> => <span class="var">u</span>
+<span class="cmt"># key = "Ali", "Sara", "John"</span></pre>
+      </div>
+      <div class="col-card" style="border-color: rgba(167,139,250,0.3);">
+        <div class="col-title" style="color:var(--accent3);">role as key (if unique)</div>
+        <pre><span class="kw">for</span> <span class="var">u</span> <span class="kw">in</span> <span class="var">var.users</span> : <span class="var">u.role</span> => <span class="var">u</span>
+<span class="cmt"># key = "admin", "dev", "ops"</span></pre>
+      </div>
+    </div>
+    <div class="rule-box warn-box" style="margin-top:16px;">
+      <div class="rule-icon">⚠️</div>
+      <p>Whatever you pick as key <strong>must be unique</strong> across all items — Terraform uses it to track the resource in the state file. Duplicate keys will cause an error.</p>
+    </div>
+  </div>
+
+  <!-- Section 5: dynamic block -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num red">05</div>
+      <h2>Option 4 — <span>dynamic</span> block with <span>for_each</span></h2>
+    </div>
+    <p>Used inside a resource to dynamically generate <strong style="color:#fff">nested blocks</strong> (like ingress/egress rules). The <code style="color:var(--red);font-family:'JetBrains Mono',monospace">content {}</code> block defines what each iteration generates.</p>
+
+    <div class="code-wrap">
+      <div class="code-label">variables.tf</div>
+      <pre><span class="kw">variable</span> <span class="str">"allowed_ports"</span> {
+  <span class="kw">type</span>    = <span class="fn">list</span>(<span class="kw">number</span>)
+  <span class="kw">default</span> = [<span class="num">80</span>, <span class="num">443</span>, <span class="num">22</span>]
+}
+
+<span class="kw">variable</span> <span class="str">"allowed_egress_ports"</span> {
+  <span class="kw">type</span>    = <span class="fn">list</span>(<span class="kw">number</span>)
+  <span class="kw">default</span> = [<span class="num">80</span>, <span class="num">443</span>]
+}</pre>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-label">main.tf</div>
+      <pre><span class="kw">resource</span> <span class="str">"aws_security_group"</span> <span class="str">"web_sg"</span> {
+  name = <span class="str">"${var.environment}-web-sg"</span>
+
+  <span class="cmt"># Dynamic ingress — loop through port list</span>
+  <span class="kw">dynamic</span> <span class="str">"ingress"</span> {
+    <span class="kw">for_each</span> = <span class="fn">toset</span>(<span class="var">var.allowed_ports</span>)   <span class="cmt"># list → set</span>
+    <span class="kw">content</span> {
+      from_port   = <span class="var">ingress.value</span>           <span class="cmt"># iterator = block name by default</span>
+      to_port     = <span class="var">ingress.value</span>
+      protocol    = <span class="str">"tcp"</span>
+      cidr_blocks = [<span class="str">"0.0.0.0/0"</span>]
+    }
+  }
+
+  <span class="cmt"># Dynamic egress — with custom iterator name</span>
+  <span class="kw">dynamic</span> <span class="str">"egress"</span> {
+    <span class="kw">for_each</span> = <span class="fn">toset</span>(<span class="var">var.allowed_egress_ports</span>)
+    <span class="kw">iterator</span> = <span class="val">port</span>                           <span class="cmt"># custom iterator name</span>
+    <span class="kw">content</span> {
+      from_port   = <span class="var">port.value</span>               <span class="cmt"># use "port" instead of "egress"</span>
+      to_port     = <span class="var">port.value</span>
+      protocol    = <span class="str">"tcp"</span>
+      cidr_blocks = [<span class="str">"0.0.0.0/0"</span>]
+    }
+  }
+}</pre>
+    </div>
+
+    <div class="output-box">
+      <div class="output-label">Rules Generated</div>
+      <pre>Ingress Rules:  port 80  (tcp) ← 0.0.0.0/0
+                port 443 (tcp) ← 0.0.0.0/0
+                port 22  (tcp) ← 0.0.0.0/0
+
+Egress Rules:   port 80  (tcp) → 0.0.0.0/0
+                port 443 (tcp) → 0.0.0.0/0</pre>
+    </div>
+  </div>
+
+  <!-- Summary Table -->
+  <div class="section summary">
+    <div class="section-header">
+      <div class="section-num">★</div>
+      <h2>Quick Reference Summary</h2>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Situation</th>
+          <th>Syntax</th>
+          <th>Access</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Plain list of strings</td>
+          <td><code>for_each = toset(var.list)</code></td>
+          <td>each.value only</td>
+        </tr>
+        <tr>
+          <td>Map variable</td>
+          <td><code>for_each = var.map</code></td>
+          <td>each.key + each.value</td>
+        </tr>
+        <tr>
+          <td>List of objects</td>
+          <td><code>for_each = { for x in var.list : x.id => x }</code></td>
+          <td>each.key + each.value.field</td>
+        </tr>
+        <tr>
+          <td>Dynamic nested blocks</td>
+          <td><code>dynamic "block" { for_each = ... content {} }</code></td>
+          <td>block.value (or iterator.value)</td>
+        </tr>
+        <tr>
+          <td>Custom iterator name</td>
+          <td><code>iterator = port</code> inside dynamic</td>
+          <td>port.key / port.value</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <hr class="divider">
+
+    <div class="rule-box warn-box">
+      <div class="rule-icon">⚠️</div>
+      <p><strong>Never use plain list directly</strong> — always convert to set or map first. And always use a <strong>stable, unique key</strong> for maps — Terraform tracks resources by key in state file.</p>
+    </div>
+  </div>
+
+  
+
+  <footer>
+    Terraform for_each — Complete Notes &nbsp;·&nbsp; IaC Reference
+  </footer>
+
+</div>
+</body>
+</html>

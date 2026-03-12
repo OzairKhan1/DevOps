@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terraform State Commands – Production Reference</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Calibri, sans-serif; background: #f4f6fb; color: #222; }
+  .page { max-width: 900px; margin: 40px auto; background: #fff; border-radius: 10px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); padding: 52px 60px 60px; }
+
+  .title { font-size: 2.2rem; font-weight: 800; color: #1F4E79; text-align: center; border-bottom: 4px solid #2E75B6; padding-bottom: 14px; margin-bottom: 4px; }
+  .subtitle { text-align: center; color: #555; font-size: 1rem; margin-bottom: 36px; }
+
+  h1 { font-size: 1.45rem; font-weight: 700; color: #1F4E79; border-bottom: 3px solid #2E75B6; padding-bottom: 6px; margin: 38px 0 14px; }
+  h2 { font-size: 1.1rem; font-weight: 700; color: #2E75B6; margin: 28px 0 8px; }
+  h3 { font-size: 0.97rem; font-weight: 700; color: #333; margin: 16px 0 6px; }
+
+  p { font-size: 0.97rem; line-height: 1.75; margin-bottom: 10px; }
+  code { background: #EEF2F7; border-radius: 4px; padding: 1px 6px; font-family: 'Courier New', monospace; font-size: 0.88rem; color: #1A1A2E; }
+
+  pre {
+    background: #EEF2F7;
+    border: 1px solid #ccd6e8;
+    border-radius: 7px;
+    padding: 16px 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.65;
+    color: #1A1A2E;
+    overflow-x: auto;
+    margin: 10px 0 16px;
+  }
+
+  .note {
+    background: #FFFBF0;
+    border-left: 5px solid #F5A623;
+    border-radius: 0 6px 6px 0;
+    padding: 12px 16px;
+    font-style: italic;
+    font-size: 0.92rem;
+    color: #666;
+    margin: 12px 0 18px;
+  }
+
+  .danger {
+    background: #FFF5F5;
+    border-left: 5px solid #E53E3E;
+    border-radius: 0 6px 6px 0;
+    padding: 12px 16px;
+    font-style: italic;
+    font-size: 0.92rem;
+    color: #666;
+    margin: 12px 0 18px;
+  }
+
+  .tip {
+    background: #F0FFF4;
+    border-left: 5px solid #38A169;
+    border-radius: 0 6px 6px 0;
+    padding: 12px 16px;
+    font-style: italic;
+    font-size: 0.92rem;
+    color: #666;
+    margin: 12px 0 18px;
+  }
+
+  /* Command card */
+  .cmd-card {
+    border: 1px solid #D6E4F7;
+    border-radius: 9px;
+    margin: 28px 0 10px;
+    overflow: hidden;
+  }
+  .cmd-header {
+    background: linear-gradient(90deg, #1F4E79 0%, #2E75B6 100%);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .cmd-badge {
+    background: rgba(255,255,255,0.18);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 2px 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .cmd-badge.danger-badge { background: rgba(229,62,62,0.55); }
+  .cmd-badge.caution-badge { background: rgba(245,166,35,0.55); }
+  .cmd-badge.safe-badge { background: rgba(56,161,105,0.40); }
+  .cmd-title {
+    font-family: 'Courier New', monospace;
+    font-size: 1rem;
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+  .cmd-body { padding: 16px 20px 18px; }
+  .cmd-body p { margin-bottom: 8px; }
+
+  /* Summary Table */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0 10px; font-size: 0.91rem; }
+  th { background: #1F4E79; color: #fff; padding: 10px 14px; text-align: left; font-weight: 600; }
+  td { padding: 9px 14px; border: 1px solid #ccc; vertical-align: top; line-height: 1.5; }
+  tr:nth-child(even) td { background: #EEF4FB; }
+  td:first-child { font-family: 'Courier New', monospace; font-size: 0.82rem; color: #1A1A2E; white-space: nowrap; }
+  td.risk-low { color: #38A169; font-weight: 700; }
+  td.risk-med { color: #D69E2E; font-weight: 700; }
+  td.risk-high { color: #E53E3E; font-weight: 700; }
+
+  .footer { margin-top: 48px; border-top: 3px solid #2E75B6; padding-top: 12px; text-align: center; color: #888; font-size: 0.85rem; }
+
+  @media print {
+    body { background: white; }
+    .page { box-shadow: none; margin: 0; padding: 30px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="title">Terraform State Commands</div>
+  <div class="subtitle">Production Reference Guide with Examples</div>
+
+  <!-- Intro -->
+  <h1>What is Terraform State?</h1>
+  <p>Terraform uses a <strong>state file</strong> (<code>terraform.tfstate</code>) to keep track of the real-world infrastructure it manages. This file maps your configuration to actual cloud resources. In production, state is usually stored remotely (S3, Azure Blob, Terraform Cloud) to enable team collaboration and locking.</p>
+  <p>State commands let you inspect, manipulate, and recover the state file — they are among the most powerful and sensitive operations in Terraform.</p>
+  <div class="note">📝 Always back up your state file before running any state manipulation command in production. Use <code>terraform state pull > backup.tfstate</code> first.</div>
+
+  <!-- Commands -->
+  <h1>State Commands</h1>
+
+  <!-- 1. state list -->
+  <div class="cmd-card">
+    <div class="cmd-header">
+      <span class="cmd-badge safe-badge">Safe</span>
+      <span class="cmd-title">terraform state list</span>
+    </div>
+    <div class="cmd-body">
+      <p>Lists all resources currently tracked in the Terraform state file. The first thing you run before any state operation to understand what Terraform is managing.</p>
+      <h3>Usage:</h3>
+      <pre># List all resources
+terraform state list
+
+# Filter by module
+terraform state list module.vpc
+
+# Filter by resource type
+terraform state list aws_instance.*</pre>
+      <h3>Sample Output:</h3>
+      <pre>aws_instance.web
+aws_s3_bucket.app_data
+aws_security_group.allow_http
+module.vpc.aws_vpc.main
+module.vpc.aws_subnet.public[0]</pre>
+      <div class="tip">✅ Production use: Run before any refactoring or state manipulation to get the exact resource addresses you'll be working with.</div>
+    </div>
+  </div>
+
+  <!-- 2. state show -->
+  <div class="cmd-card">
+    <div class="cmd-header">
+      <span class="cmd-badge safe-badge">Safe</span>
+      <span class="cmd-title">terraform state show &lt;resource&gt;</span>
+    </div>
+    <div class="cmd-body">
+      <p>Displays the full details of a specific resource stored in state, including all attributes and their current values. Useful for inspecting a resource without logging into the cloud console.</p>
+      <h3>Usage:</h3>
+      <pre># Show a specific resource
+terraform state show aws_instance.web
+
+# Show a resource inside a module
+terraform state show module.vpc.aws_subnet.public[0]</pre>
+      <h3>Sample Output:</h3>
+      <pre># aws_instance.web:
+resource "aws_instance" "web" {
+    ami                    = "ami-0c55b159cbfafe1f0"
+    id                     = "i-0abc123def456"
+    instance_type          = "t2.micro"
+    private_ip             = "10.0.1.15"
+    public_ip              = "54.210.167.99"
+    tags                   = {
+        "Name" = "WebServer"
+    }
+}</pre>
+      <div class="tip">✅ Production use: Use to verify real resource attributes (IDs, IPs, ARNs) or debug drift between config and reality.</div>
+    </div>
+  </div>
+
+  <!-- 3. state mv -->
+  <div class="cmd-card">
+    <div class="cmd-header">
+      <span class="cmd-badge caution-badge">Caution</span>
+      <span class="cmd-title">terraform state mv &lt;source&gt; &lt;destination&gt;</span>
+    </div>
+    <div class="cmd-body">
+      <p>Moves a resource from one state address to another. This is essential when renaming resources in code or restructuring into modules — it prevents Terraform from destroying and recreating the actual infrastructure.</p>
+      <h3>Usage:</h3>
+      <pre># Rename a resource
+terraform state mv aws_instance.web aws_instance.app_server
+
+# Move into a module
+terraform state mv aws_instance.web module.app.aws_instance.web
+
+# Move a resource out of a module
+terraform state mv module.app.aws_instance.web aws_instance.web
+
+# Move between two modules
+terraform state mv module.old.aws_instance.web module.new.aws_instance.web</pre>
+      <div class="note">📝 After running state mv, run <code>terraform plan</code> to confirm no unexpected destroy/create actions are planned.</div>
+    </div>
+  </div>
+
+  <!-- 4. state rm -->
+  <div class="cmd-card">
+    <div class="cmd-header">
+      <span class="cmd-badge caution-badge">Caution</span>
+      <span class="cmd-title">terraform state rm &lt;resource&gt;</span>
+    </div>
+    <div class="cmd-body">
+      <p>Removes a resource from the state file <strong>without destroying the actual infrastructure</strong>. Terraform simply forgets about it. Used when transferring resource management to another team, tool, or Terraform workspace.</p>
+      <h3>Usage:</h3>
+      <pre># Remove a single resource from state
+terraform state rm aws_instance.web
+
+# Remove a module and all its resources
+terraform state rm module.vpc
+
+# Remove a specific instance from a count-based resource
+terraform state rm 'aws_instance.web[2]'</pre>
+      <div class="danger">⚠️ After removal, if you run <code>terraform apply</code> without updating your config, Terraform will try to CREATE the resource again. Either remove it from your .tf files or re-import it.</div>
+    </div>
+  </div>
+
+  <!-- 5. state pull -->
+  <div class="cmd-card">
+    <div class="cmd-header">
+      <span class="cmd-badge safe-badge">Safe</span>
+      <span class="cmd-title">terraform state pull</span>
+    </div>
+    <div class="cmd-body">
+      <p>Downloads and prints the current state file to stdout. Works for both local and remote backends. Used for backups, auditing, and manual inspection of the full state.</p>
+      <h3>Usage:</h3>
+      <pre># View the full raw state
+terraform state pull
+
+# Save state as a backup file
+terraform state pull > backup_$(date +%Y%m%d_%H%M%S).tfstate
+
+# Pretty-print and inspect specific resource
+terraform state pull | jq '.resources[] | select(.name == "web")'</pre>
+      <div class="tip">✅ Production use: Always pull and save a backup before any risky state operation. Combine with <code>jq</code> for powerful querying of the JSON state.</div>
+    </div>
+  </div>
+
+  <!-- 6. state push -->
+  <div class="cmd-card">
+    <div class="cmd-header">
+      <span class="cmd-badge danger-badge">Dangerous</span>
+      <span class="cmd-title">terraform state push &lt;file&gt;</span>
+    </div>
+    <div class="cmd-body">
+      <p>Uploads a local state file to the configured remote backend, overwriting the current state. Used for state recovery after corruption or to restore a previous backup.</p>
+      <h3>Usage:</h3>
+      <pre># Push a local state file to remote backend
+terraform state push backup_20240101.tfstate
+
+# Force push (override serial number check)
+terraform state push -force backup_20240101.tfstate</pre>
+      <div class="danger">⚠️ DANGER: This overwrites the remote state completely. Only use during disaster recovery and with full team awareness. A wrong push can cause mass resource destruction on the next apply.</div>
+    </div>
+  </div>
+
+  <!-- 7. state replace-provider -->
+  <div class="cmd-card">
+    <div class="cmd-header">
+      <span class="cmd-badge caution-badge">Caution</span>
+      <span class="cmd-title">terraform state replace-provider &lt;old&gt; &lt;new&gt;</span>
+    </div>
+    <div class="cmd-body">
+      <p>Replaces the provider source recorded in the state for all matching resources. Used when migrating from an unofficial or old provider path to the official registry path.</p>
+      <h3>Usage:</h3>
+      <pre># Migrate from old provider path to new
+terraform state replace-provider \
+  "registry.terraform.io/-/aws" \
+  "registry.terraform.io/hashicorp/aws"
+
+# Migrate a community provider
+terraform state replace-provider \
+  "hashicorp/kubernetes" \
+  "registry.terraform.io/hashicorp/kubernetes"</pre>
+      <div class="note">📝 Run <code>terraform init</code> and <code>terraform plan</code> after this to ensure the new provider is properly initialized and no changes are unintended.</div>
+    </div>
+  </div>
+
+  <!-- 8. import -->
+  <div class="cmd-card">
+    <div class="cmd-header">
+      <span class="cmd-badge caution-badge">Caution</span>
+      <span class="cmd-title">terraform import &lt;address&gt; &lt;real-id&gt;</span>
+    </div>
+    <div class="cmd-body">
+      <p>Brings an existing real-world resource under Terraform management by adding it to the state file. Widely used when adopting Terraform for infrastructure that was created manually or by another tool.</p>
+      <h3>Usage:</h3>
+      <pre># Import an EC2 instance
+terraform import aws_instance.web i-0abc123def456789
+
+# Import an S3 bucket
+terraform import aws_s3_bucket.app_data my-app-data-bucket
+
+# Import a resource inside a module
+terraform import module.vpc.aws_subnet.public[0] subnet-0abc123
+
+# Import with for_each (use the key)
+terraform import 'aws_instance.servers["web"]' i-0abc123def456789</pre>
+      <div class="note">📝 After import, the resource is in state but your .tf config must match it. Run <code>terraform plan</code> — a clean plan (no changes) confirms success. From Terraform v1.5+, you can also use <code>import</code> blocks directly in config files.</div>
+    </div>
+  </div>
+
+  <!-- 9. force-unlock -->
+  <div class="cmd-card">
+    <div class="cmd-header">
+      <span class="cmd-badge danger-badge">Dangerous</span>
+      <span class="cmd-title">terraform force-unlock &lt;lock-id&gt;</span>
+    </div>
+    <div class="cmd-body">
+      <p>Forcefully removes a state lock that was left behind by a crashed or interrupted Terraform operation. A state lock prevents concurrent modifications — when it gets stuck, it blocks all further Terraform runs.</p>
+      <h3>Usage:</h3>
+      <pre># Get the lock ID from the error message, then:
+terraform force-unlock 12345678-abcd-1234-abcd-123456789abc
+
+# Skip confirmation prompt
+terraform force-unlock -force 12345678-abcd-1234-abcd-123456789abc</pre>
+      <h3>Typical Error Message:</h3>
+      <pre>Error: Error acquiring the state lock
+Lock Info:
+  ID:     12345678-abcd-1234-abcd-123456789abc
+  Who:    user@hostname
+  Created: 2024-01-15 09:32:10</pre>
+      <div class="danger">⚠️ DANGER: Only force-unlock if you are 100% certain no other Terraform operation is actively running. Unlocking during an active apply can corrupt state and cause unpredictable infrastructure changes.</div>
+    </div>
+  </div>
+
+  <!-- 10. apply -refresh-only -->
+  <div class="cmd-card">
+    <div class="cmd-header">
+      <span class="cmd-badge safe-badge">Safe</span>
+      <span class="cmd-title">terraform apply -refresh-only</span>
+    </div>
+    <div class="cmd-body">
+      <p>Reconciles the state file with real infrastructure by querying the provider for current values — without making any actual changes. This is the modern, safer replacement for the deprecated <code>terraform refresh</code> command.</p>
+      <h3>Usage:</h3>
+      <pre># Preview what has drifted (no changes made)
+terraform plan -refresh-only
+
+# Apply the refresh to update state
+terraform apply -refresh-only
+
+# Refresh without prompting for confirmation
+terraform apply -refresh-only -auto-approve</pre>
+      <div class="tip">✅ Production use: Run periodically to detect infrastructure drift — situations where someone made manual changes in the cloud console that Terraform doesn't know about yet.</div>
+    </div>
+  </div>
+
+  <!-- Summary Table -->
+  <h1>Quick Reference Summary</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Command</th>
+        <th>What It Does</th>
+        <th>Risk Level</th>
+        <th>Modifies State?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>state list</td>
+        <td>List all tracked resources</td>
+        <td class="risk-low">Low</td>
+        <td>No</td>
+      </tr>
+      <tr>
+        <td>state show</td>
+        <td>Show full details of a resource</td>
+        <td class="risk-low">Low</td>
+        <td>No</td>
+      </tr>
+      <tr>
+        <td>state pull</td>
+        <td>Download and print raw state</td>
+        <td class="risk-low">Low</td>
+        <td>No</td>
+      </tr>
+      <tr>
+        <td>apply -refresh-only</td>
+        <td>Sync state with real infrastructure</td>
+        <td class="risk-low">Low</td>
+        <td>Yes (safe)</td>
+      </tr>
+      <tr>
+        <td>state mv</td>
+        <td>Rename / move resource in state</td>
+        <td class="risk-med">Medium</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>state rm</td>
+        <td>Remove resource from state (no destroy)</td>
+        <td class="risk-med">Medium</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>state replace-provider</td>
+        <td>Swap provider source in state</td>
+        <td class="risk-med">Medium</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>import</td>
+        <td>Bring existing resource into state</td>
+        <td class="risk-med">Medium</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>state push</td>
+        <td>Upload local state to remote backend</td>
+        <td class="risk-high">High</td>
+        <td>Yes (overwrites)</td>
+      </tr>
+      <tr>
+        <td>force-unlock</td>
+        <td>Remove a stuck state lock</td>
+        <td class="risk-high">High</td>
+        <td>Yes</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="footer">Terraform State Commands Reference &nbsp;|&nbsp; Applies to Terraform v0.14+ &nbsp;|&nbsp; refresh-only requires v0.15.4+</div>
+</div>
+</body>
+</html>
