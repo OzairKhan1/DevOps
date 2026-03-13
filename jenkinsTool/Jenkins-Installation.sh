@@ -1,28 +1,30 @@
 #!/bin/bash
+set -ex
 
-# 1. Update packages
-sudo apt update -y
-#sudo apt upgrade -y
+# Update packages
+sudo apt update
 
-# 2. Install Java (Jenkins needs Java 11 or 17)
-sudo apt install -y fontconfig openjdk-17-jre
+# Install Java (required by Jenkins)
+sudo apt install -y fontconfig openjdk-21-jre
 
-# 3. Add Jenkins repo key
-curl -fsSL https://pkg.jenkins.io/debian/jenkins.io-2023.key | sudo tee \
-  /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+# Verify Java
+java -version
 
-# 4. Add Jenkins repository
-echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
-  https://pkg.jenkins.io/debian binary/ | sudo tee \
-  /etc/apt/sources.list.d/jenkins.list > /dev/null
+# Add Jenkins repository key
+sudo wget -O /etc/apt/keyrings/jenkins-keyring.asc \
+https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
 
-# 5. Install Jenkins
-sudo apt update -y
+# Add Jenkins repository
+echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] \
+https://pkg.jenkins.io/debian-stable binary/" \
+| sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+
+# Update repositories
+sudo apt update
+
+# Install Jenkins
 sudo apt install -y jenkins
 
-# 6. Start and enable Jenkins service
+# Start Jenkins
 sudo systemctl enable jenkins
 sudo systemctl start jenkins
-
-# 7. Check status
-sudo systemctl status jenkins
