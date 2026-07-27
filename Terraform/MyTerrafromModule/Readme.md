@@ -113,3 +113,53 @@ For custom modules, the variables.tf and main.tf files serve as the module docum
 terraform.tf, providers.tf, and backend configuration do NOT need to be in separate files.
 You can keep everything inside main.tf if desired.
 Terraform automatically reads all .tf files in the directory.
+--------------------------------------------------------------------------------------------------------------------------------------
+**EXtra Info Extenstion**  **Related to Variable Initilizatin at different Stage**  
+
+
+  # Terraform Module Variables
+
+A child module already defines its own input variables.
+
+You can either:
+
+## Option 1: Pass values directly (Valid)
+
+```hcl
+module "vpc" {
+  source = "./modules/vpc"
+
+  environment  = "prod"
+  project_name = "banking"
+}
+```
+
+No root `variables.tf` is required.
+
+---
+
+## Option 2: Use root variables (Recommended)
+
+```hcl
+# variables.tf
+variable "environment" {}
+variable "project_name" {}
+```
+
+```hcl
+# terraform.tfvars
+environment  = "prod"
+project_name = "banking"
+```
+
+```hcl
+# main.tf
+module "vpc" {
+  source = "./modules/vpc"
+
+  environment  = var.environment
+  project_name = var.project_name
+}
+```
+
+This approach is preferred for reusable, multi-environment projects.
