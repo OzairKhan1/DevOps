@@ -175,20 +175,20 @@ module "vpc" {
 5. The module receives those values and uses them.
 
 # Flow  
-terraform.tfvars
-       ↓
-Root variables.tf
-       ↓
-Root main.tf (module block)
-       ↓
-Module variables.tf
-       ↓
-Resources  
+terraform.tfvars  
+       ↓  
+Root variables.tf  
+       ↓  
+Root main.tf (module block)  
+       ↓  
+Module variables.tf  
+       ↓  
+Resources    
 
 **Or, if you don't use terraform.tfvars:**  
 
-Module variables.tf
-       ↓
-Root main.tf (hardcoded values)
-       ↓
-Resources
+Module variables.tf  
+       ↓  
+Root main.tf (hardcoded values)  
+       ↓  
+Resources  
