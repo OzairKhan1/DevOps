@@ -162,4 +162,33 @@ module "vpc" {
 }
 ```
 
-This approach is preferred for reusable, multi-environment projects.
+**This approach is preferred for reusable, multi-environment projects.**
+
+1. Declare variables inside the module.
+
+2. (Optional but recommended) Declare the same variables in the root module.
+
+3. Assign values in terraform.tfvars.
+
+4. In root main.tf, pass the root variables to the module.
+
+5. The module receives those values and uses them.
+
+# Flow  
+terraform.tfvars
+       ↓
+Root variables.tf
+       ↓
+Root main.tf (module block)
+       ↓
+Module variables.tf
+       ↓
+Resources  
+
+**Or, if you don't use terraform.tfvars:**  
+
+Module variables.tf
+       ↓
+Root main.tf (hardcoded values)
+       ↓
+Resources
