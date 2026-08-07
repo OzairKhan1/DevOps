@@ -44,7 +44,8 @@ Verify
 
 kubectl get nodes
 
-**Setup has Completed Here.**
+#Setup has Completed Here.
+----------------------------------------------------  
 
 **NOTE**:   Check the calico yaml for these changes
   
@@ -52,8 +53,6 @@ kubectl get ippool default-ipv4-ippool -o yaml
 Confirm vxlanMode: Always and ipipMode: Never before moving on. If the sed didn't match (manifest changed), patch it directly instead:  
 kubectl patch ippool default-ipv4-ippool --type merge -p '{"spec":{"ipipMode":"Never","vxlanMode":"Always"}}'  
 
-
-  
 ----------------------------------------------------
  
 ## Debugging a Flask + MongoDB App on Kubeadm (OCI): Root Cause Chain & Takeaways
