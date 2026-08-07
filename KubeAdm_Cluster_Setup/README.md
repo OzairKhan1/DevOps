@@ -45,9 +45,10 @@ Verify
 kubectl get nodes
 
 **Setup has Completed Here.**
+  
 ----------------------------------------------------
  
-# Debugging a Flask + MongoDB App on Kubeadm (OCI): Root Cause Chain & Takeaways
+## Debugging a Flask + MongoDB App on Kubeadm (OCI): Root Cause Chain & Takeaways
 
 ## Summary
 
