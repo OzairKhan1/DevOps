@@ -44,28 +44,24 @@ Verify
 
 kubectl get nodes
 
-
-Setup has Completed Here. The Below Section is For disabling Iptables on Oracle Cloud 
-
+Setup has Completed Here.
 ----------------------------------------------------
+ 
+**This  Section is For disabling Iptables on Oracle Cloud**
 
-These Are Some Extra-Tools 
-
-```bash
+# Step 1 — Locate what's loading the rules (diagnostic only)
 sudo find / -name "iptables_fromoracle*" 2>/dev/null
 cat /etc/network/if-pre-up.d/iptables-load 2>/dev/null
 systemctl list-units --type=service | grep -i iptables
 systemctl list-unit-files | grep -i netfilter
 
-
-Step 2 — Since you already flushed and want AWS-EC2-like behavior (no host firewall interfering), just disable the loader
-
+# Step 2 — Disable the loader so it won't restore rules on boot
 sudo systemctl disable netfilter-persistent
 sudo systemctl stop netfilter-persistent
 
-This stops it from restoring any saved rules on boot — but be careful, since you saved rules earlier with netfilter-persistent save,
- that save file now needs to be cleared too so a future manual netfilter-persistent reload doesn't bring the block back:
-
+# Step 3 — Flush live rules AND overwrite the saved rules file
+# (disabling the service stops it auto-loading, but the saved file
+# on disk still has Oracle's REJECT rules until you re-save over it)
 sudo iptables -F
 sudo iptables -X
 sudo iptables -P INPUT ACCEPT
@@ -73,15 +69,13 @@ sudo iptables -P FORWARD ACCEPT
 sudo iptables -P OUTPUT ACCEPT
 sudo netfilter-persistent save
 
-Step 3 — Confirm the actual rules file content is now empty/open
-bash
+# Step 4 — Confirm the saved file now reflects the open state
 sudo cat /etc/iptables/rules.v4
 
-Step 4 — Reboot-test to be sure (do this on a non-critical moment)
-
+# Step 5 — Reboot-test to confirm it holds (do this at a non-critical moment)
 sudo reboot
-
-
+# after it comes back up:
+sudo iptables -L -n -v
 
 
 
