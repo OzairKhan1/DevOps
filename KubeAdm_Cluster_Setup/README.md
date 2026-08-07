@@ -191,11 +191,3 @@ this order — each layer rules out or confirms the next:
 
 ---
 
-## Why This Is a Good Portfolio/Interview Story
-
-This wasn't a single bug — it was three independent failures at three different
-layers (app config, host OS firewall, cloud network/CNI) that each had to be found
-and fixed in sequence, with each fix revealing the next layer's problem underneath.
-That's a much stronger story for an interview than "I deployed an app to K8s" —
-it demonstrates systematic layer-by-layer diagnosis under ambiguity, which is
-closer to what real production incidents actually look like.
