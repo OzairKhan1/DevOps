@@ -46,7 +46,7 @@ kubectl get nodes
 
 #Setup has Completed Here.
 ----------------------------------------------------  
-
+----------------------------------------------------
 **NOTE**:   Check the calico yaml for these changes
   
 kubectl get ippool default-ipv4-ippool -o yaml  
