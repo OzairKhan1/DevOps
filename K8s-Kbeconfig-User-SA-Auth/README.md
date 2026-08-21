@@ -1,17 +1,14 @@
 # Kubernetes Kubeconfig & Jenkins Authentication
 
-## Suggested Folder Name
+### The Best Approach is to Use Jenkin Pod inside the Cluster. Then We don't require the tokens at all. It will be handled automatically. 
+###  We just need to install kubectl cli to run commands from pipeline within the pod.  
 
-**Recommended:** `kubernetes-kubeconfig-jenkins-auth`
-
-Alternatives: - `kubernetes-kubeconfig` - `jenkins-kubernetes-auth` -
-`kubernetes-jenkins-integration`
-
+              **For Jenkins Setup go inside the pod and get the login password**  
 ------------------------------------------------------------------------
 
 ## 1. Overview
 
-This project documents how to authenticate Jenkins with a Kubernetes
+This project documents how to authenticate **Jenkins or Any External Application**  with a Kubernetes
 cluster using a Kubernetes `kubeconfig` file.
 
 The main concepts are: - kubeconfig - clusters - users - contexts -
@@ -140,7 +137,7 @@ Token                    -> authenticate client
 
 ------------------------------------------------------------------------
 
-## 5. CA vs Client Certificate
+## 5. Difference b/w CA vs Client Certificate
 
 This was one of the main points of confusion.
 
@@ -512,9 +509,6 @@ Therefore:
 ------------------------------------------------------------------------
 
 # Problems and Questions Faced
-
-## 1. What should be stored in Jenkins Credentials?
-
 Question:
 
 > Should I store the token, CA, certificate, and key separately?
