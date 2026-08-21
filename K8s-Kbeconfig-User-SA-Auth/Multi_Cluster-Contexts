@@ -1,0 +1,25 @@
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: <Enter CA Certificate>
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    namespace: 11-microservices
+    user: jenkins-deployer
+  name: jenkins-deployer@kubernetes
+- context:
+    cluster: kubernetes
+    namespace: 11-microservices
+    user: kubernetes-admin
+  name: kubernetes-admin@kubernetes
+current-context: jenkins-deployer@kubernetes
+kind: Config
+users:
+- name: jenkins-deployer
+  user:
+    token: < This Token is Created for SA or User. Replace this Value> 
+  user:
+    client-certificate-data: <PUblic Key of Cluster > 
+    client-key-data: < Private-Key-of Cluster > 
