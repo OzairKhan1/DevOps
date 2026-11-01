@@ -1,0 +1,13 @@
+controller:
+  # Your actual AWS region
+  region: us-east-1
+
+  # Only one Kubernetes node
+  replicaCount: 1
+
+node:
+  # Allow the node plugin to access EC2 metadata
+  hostNetwork: true
+
+  # Default K3s kubelet directory
+  kubeletPath: /var/lib/kubelet
