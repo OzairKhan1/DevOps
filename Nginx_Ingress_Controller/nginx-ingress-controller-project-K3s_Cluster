@@ -1,0 +1,842 @@
+# Kubernetes Host-Based Routing with NGINX Ingress
+
+**Environment:** Local k3s cluster on Ubuntu VM (VMware)  
+**Notes updated:** 3 November 2026  
+**Purpose:** Practical learning notes for host-based Ingress, NGINX exposure, Argo CD, Grafana, and Prometheus.
+
+> These notes distinguish the configuration that is currently working in the lab from recommendations for a future production deployment. Do not treat the HTTP-only lab settings as production security settings.
+
+---
+
+## 1. Current lab environment
+
+| Item | Current value |
+|---|---|
+| Kubernetes distribution | k3s |
+| Ubuntu VM IP | `10.227.142.162` |
+| NGINX controller namespace | `ingress-nginx` |
+| NGINX controller Pod | `ingress-nginx-controller-7b97fd5459-758qd` (Pod name can change) |
+| Application namespace | `app-ns` |
+| Argo CD namespace | `argocd` |
+| Monitoring namespace | `monitoring` |
+| NGINX HTTP NodePort | `30143` |
+| NGINX HTTPS NodePort | `32132` |
+| NGINX Service ports | `80:30143/TCP`, `443:32132/TCP` |
+| NGINX Deployment HostPorts | `80` and `443` |
+
+The VM IP and generated Pod name can change. Re-check them rather than assuming they are permanent.
+
+### Useful inspection commands
+
+```bash
+kubectl get pods -A -o wide
+kubectl get svc -A
+kubectl get ingress -A -o wide
+kubectl get ingressclass
+kubectl get svc ingress-nginx-controller -n ingress-nginx -o wide
+kubectl get deployment ingress-nginx-controller -n ingress-nginx -o yaml
+```
+
+---
+
+## 2. Ingress: the three separate components
+
+Do not confuse these Kubernetes resources:
+
+| Component | Responsibility |
+|---|---|
+| **Ingress resource** | Declarative HTTP/HTTPS routing rules: hostnames, paths, and backend Services. |
+| **Ingress Controller** | A running controller/proxy (here, NGINX) that watches Ingress resources and implements their rules. |
+| **Service exposing the controller** | Makes the controller reachable from outside the cluster, for example with `NodePort`, `LoadBalancer`, or another node-level mechanism. |
+
+The Ingress resource does not itself create an AWS load balancer. The controller implementation and its Service/exposure configuration determine how traffic enters the cluster.
+
+An NGINX Ingress Controller is more accurately described as an **L7 reverse proxy / HTTP router**. It can distribute requests to backend Service endpoints, but it is not the same thing as an AWS ALB or NLB.
+
+### Namespace correction
+
+- An Ingress resource is **namespaced**.
+- Its backend Service reference is in the **same namespace** as that Ingress resource.
+- The NGINX controller can watch Ingress resources in multiple namespaces, subject to its configuration and RBAC permissions.
+- You may put many Ingress resources in **one physical YAML file**, separated by `---`, but each resource still has its own namespace.
+- Therefore, a single Ingress object cannot directly reference your `argocd` Service, `monitoring` Service, and `app-ns` Service all together.
+
+For this cluster, use four Ingress objects in one file: one in `app-ns`, one in `argocd`, and two in `monitoring`.
+
+---
+
+## 3. Host-based routing without buying a domain
+
+A public registered domain is not required for local host-based routing.
+
+Host-based routing works because the browser sends an HTTP `Host` header. DNS/name resolution gets the client to the server IP; the Ingress Controller then uses the hostname in the HTTP request to choose a backend.
+
+Example request:
+
+```http
+GET / HTTP/1.1
+Host: grafana.k3s.test
+```
+
+For the local lab, add these lines to the **Windows hosts file**, opened with Administrator privileges:
+
+File:
+
+```text
+C:\Windows\System32\drivers\etc\hosts
+```
+
+Entries:
+
+```text
+10.227.142.162 app.k3s.test
+10.227.142.162 argocd.k3s.test
+10.227.142.162 grafana.k3s.test
+10.227.142.162 prometheus.k3s.test
+```
+
+Then run in an elevated PowerShell window:
+
+```powershell
+ipconfig /flushdns
+```
+
+The `.test` hostnames are local test names, not registered public DNS records. The hosts file only provides name-to-IP resolution; it does not open ports, configure routing, or secure the applications.
+
+### URLs in the current lab
+
+Because the NGINX controller Pod is configured with `hostPort: 80` and `hostPort: 443`, the browser can use the standard HTTP/HTTPS ports without showing a port number:
+
+```text
+http://app.k3s.test/
+http://argocd.k3s.test/
+http://grafana.k3s.test/
+http://prometheus.k3s.test/
+```
+
+The controller Service also exposes NodePorts. Those are a separate way to reach the same controller:
+
+```text
+http://app.k3s.test:30143/
+https://app.k3s.test:32132/
+```
+
+Use the appropriate protocol and certificate configuration before using HTTPS. The HTTPS NodePort existing does not, by itself, mean a valid TLS certificate has been configured.
+
+---
+
+## 4. HostPort and NodePort in this cluster — important correction
+
+The following two mechanisms are present at the same time in the current setup. They are **not the same thing**, and NodePort does not automatically bind HostPort.
+
+### HostPort
+
+The controller Deployment contains:
+
+```yaml
+ports:
+  - name: http
+    containerPort: 80
+    hostPort: 80
+    protocol: TCP
+  - name: https
+    containerPort: 443
+    hostPort: 443
+    protocol: TCP
+```
+
+This asks Kubernetes/the container networking implementation to expose the Pod's container ports on the node's corresponding ports. Since the controller Pod is scheduled on the Ubuntu node, the node's ports 80 and 443 can reach that Pod.
+
+### NodePort Service
+
+The controller Service is also a NodePort Service:
+
+```text
+HTTP  Service port 80  -> NodePort 30143
+HTTPS Service port 443 -> NodePort 32132
+```
+
+Check it with:
+
+```bash
+kubectl get svc ingress-nginx-controller -n ingress-nginx \
+  -o jsonpath='{range .spec.ports[*]}{.name}{" port="}{.port}{" nodePort="}{.nodePort}{"\n"}{end}'
+```
+
+### Why did `ss` show no listener?
+
+The command below returned no process listening on host ports 80/443:
+
+```bash
+sudo ss -lntp | grep -E ':(80|443)\b'
+```
+
+That does not disprove HostPort. Depending on the CNI/port-mapping implementation, HostPort traffic can be handled through network rules rather than a normal userspace process visible in `ss`.
+
+### What the previous checks established
+
+- The controller Service is `NodePort`.
+- The controller Deployment declares HostPort 80 and 443.
+- No `svclb` or Traefik Pods/Services appeared in the filtered output you shared.
+- Therefore, the no-port URL is explained by HostPort, not by the NodePort value.
+
+### Practical recommendation
+
+For a clean design, choose and deliberately document the exposure method. You do not need both HostPort and NodePort for ordinary browser access. Do not remove either configuration until you have confirmed which access path you intend to keep and tested it.
+
+---
+
+## 5. Current host-based Ingress manifest
+
+Save the following as `ingress-host-based.yaml`.
+
+```yaml
+# ==========================================================
+# 1. APPLICATION: frontend + backend
+# Namespace: app-ns
+# Host: app.k3s.test
+# ==========================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  namespace: app-ns
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: app.k3s.test
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 5000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 80
+
+---
+# ==========================================================
+# 2. ARGO CD
+# Namespace: argocd
+# Host: argocd.k3s.test
+# ==========================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-ingress
+  namespace: argocd
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: argocd.k3s.test
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80
+
+---
+# ==========================================================
+# 3. GRAFANA
+# Namespace: monitoring
+# Host: grafana.k3s.test
+# ==========================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: monitoring
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: grafana.k3s.test
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus-stack-grafana
+                port:
+                  number: 80
+
+---
+# ==========================================================
+# 4. PROMETHEUS
+# Namespace: monitoring
+# Host: prometheus.k3s.test
+# Basic Authentication at NGINX
+# ==========================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prometheus-ingress
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: prom-basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: "Prometheus"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: prometheus.k3s.test
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus-stack-kube-prom-prometheus
+                port:
+                  number: 9090
+```
+
+Apply and inspect:
+
+```bash
+kubectl apply -f ingress-host-based.yaml
+kubectl get ingress -A -o wide
+kubectl describe ingress app-ingress -n app-ns
+kubectl describe ingress argocd-ingress -n argocd
+kubectl describe ingress grafana-ingress -n monitoring
+kubectl describe ingress prometheus-ingress -n monitoring
+```
+
+The `ingressClassName: nginx` field tells Kubernetes which IngressClass should handle the object. Confirm the actual class name using `kubectl get ingressclass`.
+
+---
+
+## 6. Grafana configuration for host-based routing
+
+### Why Grafana may appear to work without changes
+
+When Grafana is served from the root path of its own hostname (for example, `http://grafana.k3s.test/`), it often works with default settings. However, the externally advertised URL should still match the URL used by the browser, especially for redirects, OAuth callbacks, and links.
+
+Grafana's relevant settings are:
+
+- `GF_SERVER_ROOT_URL`: the full browser-facing URL.
+- `GF_SERVER_SERVE_FROM_SUB_PATH`: whether Grafana itself serves from a URL subpath.
+
+For this lab's **host-based routing at `/`**, use:
+
+```yaml
+grafana:
+  env:
+    GF_SERVER_ROOT_URL: "http://grafana.k3s.test/"
+    GF_SERVER_SERVE_FROM_SUB_PATH: "false"
+```
+
+If the URL is exposed through NodePort instead of HostPort, include the non-standard port, for example `http://grafana.k3s.test:30143/`.
+
+If you intentionally use path-based routing such as `/grafana`, then the root URL and subpath configuration must be adjusted for that design. Do not keep `serve_from_sub_path: "true"` when changing the browser URL to a hostname at `/`.
+
+### Grafana login credentials
+
+First identify the actual Secret name. The Helm release/service naming can differ if names were overridden:
+
+```bash
+kubectl get secrets -n monitoring | grep -i grafana
+```
+
+Then replace `<GRAFANA_SECRET_NAME>` with the Secret shown by that command:
+
+```bash
+kubectl -n monitoring get secret <GRAFANA_SECRET_NAME> \
+  -o jsonpath='{.data.admin-user}' | base64 -d; echo
+
+kubectl -n monitoring get secret <GRAFANA_SECRET_NAME> \
+  -o jsonpath='{.data.admin-password}' | base64 -d; echo
+```
+
+Do not paste the decoded password into notes, tickets, screenshots, or chat. Treat it as a secret.
+
+---
+
+## 7. Prometheus configuration for host-based routing
+
+Prometheus is managed by the Prometheus Operator when installed using `kube-prometheus-stack`. Its URL/path settings belong in the Helm values that generate the Prometheus custom resource; do not make an ad-hoc edit to the generated StatefulSet as the long-term configuration method.
+
+The two important fields are:
+
+| Field | Purpose |
+|---|---|
+| `prometheus.prometheusSpec.externalUrl` | The external URL Prometheus should advertise/use in generated links. |
+| `prometheus.prometheusSpec.routePrefix` | The path prefix Prometheus serves on. |
+
+The current lab uses the hostname at the root path, so the desired values are:
+
+```yaml
+prometheus:
+  prometheusSpec:
+    externalUrl: "http://prometheus.k3s.test"
+    routePrefix: "/"
+```
+
+The external URL must match the actual address used by the browser:
+
+- HostPort HTTP: `http://prometheus.k3s.test`
+- NodePort HTTP: `http://prometheus.k3s.test:30143`
+- HostPort HTTPS: `https://prometheus.k3s.test`
+
+For host-based routing at `/`, do not leave an old URL such as `https://ddns.net` together with `routePrefix: /prometheus`.
+
+### Inspect the live Prometheus custom resource
+
+Your Prometheus custom resource name is:
+
+```text
+prometheus-stack-kube-prom-prometheus
+```
+
+Inspect the generated settings:
+
+```bash
+kubectl get prometheus prometheus-stack-kube-prom-prometheus \
+  -n monitoring \
+  -o jsonpath='ExternalURL: {.spec.externalUrl}{"\n"}RoutePrefix: {.spec.routePrefix}{"\n"}'
+```
+
+For the current HTTP HostPort lab, expected output is equivalent to:
+
+```text
+ExternalURL: http://prometheus.k3s.test
+RoutePrefix: /
+```
+
+---
+
+## 8. Prometheus Basic Authentication at NGINX
+
+Basic Authentication is configured on the Prometheus Ingress using annotations. The credential file is stored in a Kubernetes Secret in the **same namespace as the Ingress** (`monitoring`).
+
+### Create the htpasswd file
+
+On Ubuntu:
+
+```bash
+sudo apt update
+sudo apt install -y apache2-utils
+htpasswd -c auth admin
+```
+
+Enter a strong password when prompted.
+
+Important: `-c` creates/overwrites the file. Do not use `-c` when adding another user to an existing file; use `htpasswd auth another-user` instead.
+
+### Create or update the Secret
+
+The community ingress-nginx controller's default `auth-file` format expects the htpasswd contents under the Secret key named **`auth`**.
+
+```bash
+kubectl create secret generic prom-basic-auth \
+  -n monitoring \
+  --from-file=auth=./auth \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+Verify only the key name, not the decoded password:
+
+```bash
+kubectl get secret prom-basic-auth -n monitoring \
+  -o jsonpath='{.data.auth}' >/dev/null && echo "auth key exists"
+```
+
+If the Secret contains a key called `users` instead of `auth`, the default `auth-file` configuration will not read it as the expected htpasswd file. The key name is significant.
+
+### Ingress annotations
+
+```yaml
+nginx.ingress.kubernetes.io/auth-type: basic
+nginx.ingress.kubernetes.io/auth-secret: prom-basic-auth
+nginx.ingress.kubernetes.io/auth-realm: "Prometheus"
+```
+
+A `401 Unauthorized` response before credentials are supplied is expected and indicates the authentication challenge is active. Basic Auth over plain HTTP is **not encrypted**; use HTTPS or a private encrypted connection before using this outside an isolated lab.
+
+---
+
+## 9. Argo CD configuration for this lab
+
+Argo CD normally serves HTTPS on its server endpoint. In this lab, NGINX is forwarding HTTP to the `argocd-server` Service on port `80`, so the Argo CD server was configured to run without its own TLS layer:
+
+```yaml
+data:
+  server.insecure: "true"
+```
+
+Edit the ConfigMap:
+
+```bash
+kubectl edit configmap argocd-cmd-params-cm -n argocd
+```
+
+For host-based routing at `/`, do not retain old subpath settings such as:
+
+```yaml
+server.rootpath: /argocd
+server.basehref: /argocd
+```
+
+Remove those explicit old subpath entries if they are present. The default root path is appropriate for `http://argocd.k3s.test/`.
+
+Restart and check the server Deployment after changing the ConfigMap:
+
+```bash
+kubectl rollout restart deployment/argocd-server -n argocd
+kubectl rollout status deployment/argocd-server -n argocd
+```
+
+**Command correction:** `kubectl edit` opens the resource for editing and does not need `-o yaml`. To view YAML without editing, use:
+
+```bash
+kubectl get configmap argocd-cmd-params-cm -n argocd -o yaml
+```
+
+### Argo CD initial admin password
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' | base64 -d; echo
+```
+
+This is the initial admin password Secret. It may no longer exist if it was deleted after the initial password was changed. Do not expose the decoded password.
+
+### Lab vs production
+
+`server.insecure: "true"` disables TLS on the Argo CD server endpoint. It is a common arrangement when a trusted ingress proxy terminates TLS, but this lab is currently HTTP-only. For a production deployment, use HTTPS from the browser to the ingress and make an explicit decision about encryption between the ingress and Argo CD. If backend TLS is required, configure the ingress/backend protocol accordingly rather than blindly enabling insecure mode.
+
+---
+
+## 10. Update Grafana and Prometheus settings through Helm
+
+The Grafana and Prometheus URL settings are both managed through the existing `kube-prometheus-stack` Helm release. Your release name is:
+
+```text
+prometheus-stack
+```
+
+### Step 1 — Back up the current user-supplied values
+
+```bash
+helm get values prometheus-stack -n monitoring -o yaml \
+  > prometheus-stack-user-values-backup.yaml
+```
+
+Check the installed chart version:
+
+```bash
+helm list -n monitoring
+```
+
+The `CHART` column may show something like:
+
+```text
+kube-prometheus-stack-92.14.0
+```
+
+For `helm upgrade --version`, use only the version number (`92.14.0`), not the full chart identifier.
+
+### Step 2 — Create a small override file
+
+Create `prometheus-local-values.yaml`:
+
+```yaml
+grafana:
+  env:
+    GF_SERVER_ROOT_URL: "http://grafana.k3s.test/"
+    GF_SERVER_SERVE_FROM_SUB_PATH: "false"
+
+prometheus:
+  prometheusSpec:
+    externalUrl: "http://prometheus.k3s.test"
+    routePrefix: "/"
+```
+
+If you are using NodePort URLs instead of HostPort, include `:30143` in both HTTP URLs. If you later use HTTPS on the standard port 443, use `https://` and omit the port.
+
+### Step 3 — Update the existing Helm release
+
+First ensure the chart repository exists and update its index if needed:
+
+```bash
+helm repo list
+helm repo update
+```
+
+Then upgrade the **existing** release, preserving previous user-supplied values and applying the new overrides:
+
+```bash
+helm upgrade prometheus-stack prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --version 92.14.0 \
+  --reuse-values \
+  -f prometheus-local-values.yaml \
+  --wait \
+  --timeout 10m
+```
+
+Use `--version 92.14.0` only if `helm list -n monitoring` confirms that is the installed chart version. Otherwise substitute the version shown by Helm. `--reuse-values` retains the previous release's user values and merges the new file; the new values take precedence for keys they define.
+
+**Do not use this:**
+
+```bash
+--version kube-prometheus-stack-92.14.0
+```
+
+That includes the chart name and is not a valid version constraint. Use only:
+
+```bash
+--version 92.14.0
+```
+
+### Step 4 — Verify the values and reconciled Prometheus resource
+
+```bash
+helm get values prometheus-stack -n monitoring -o yaml
+
+kubectl get prometheus prometheus-stack-kube-prom-prometheus \
+  -n monitoring \
+  -o jsonpath='ExternalURL: {.spec.externalUrl}{"\n"}RoutePrefix: {.spec.routePrefix}{"\n"}'
+
+kubectl get pods -n monitoring -o wide
+```
+
+The Helm chart updates the Prometheus custom resource; the Prometheus Operator then reconciles the running Prometheus workload. Do not edit the generated StatefulSet directly as the persistent configuration method.
+
+---
+
+## 11. Useful troubleshooting commands
+
+### Check the Ingress resources
+
+```bash
+kubectl get ingress -A -o wide
+kubectl describe ingress prometheus-ingress -n monitoring
+```
+
+### Check Services and backend endpoints
+
+```bash
+kubectl get svc -n monitoring
+kubectl get endpoints prometheus-stack-kube-prom-prometheus -n monitoring
+kubectl get svc -n app-ns
+```
+
+A Service existing does not guarantee it has ready endpoints. Check endpoints when NGINX returns an upstream error.
+
+### Check NGINX controller logs
+
+```bash
+kubectl logs -n ingress-nginx \
+  deployment/ingress-nginx-controller --tail=100
+```
+
+### Test host routing without relying on Windows DNS
+
+Use the `Host` header explicitly:
+
+```bash
+curl -i -H 'Host: app.k3s.test' \
+  http://10.227.142.162:30143/
+
+curl -i -H 'Host: grafana.k3s.test' \
+  http://10.227.142.162:30143/
+```
+
+To test Prometheus Basic Auth:
+
+```bash
+# Without credentials: a 401 challenge is expected
+curl -i -H 'Host: prometheus.k3s.test' \
+  http://10.227.142.162:30143/-/healthy
+
+# With credentials: curl prompts for the password
+curl -i -u admin -H 'Host: prometheus.k3s.test' \
+  http://10.227.142.162:30143/-/healthy
+```
+
+If testing through HostPort instead of NodePort, use `http://10.227.142.162/` and omit `:30143`.
+
+### Interpreting common HTTP responses
+
+| Response | Typical meaning / next check |
+|---|---|
+| `200 OK` | Request reached an application endpoint successfully. |
+| `301` / `302` | The application or proxy redirected the request. Inspect the `Location` header; confirm the target URL/path is correct. |
+| `401 Unauthorized` | Authentication is required or credentials were rejected. For Prometheus, a 401 without credentials is expected. |
+| `403 Forbidden` | The request was understood but access was denied; inspect allowlists/auth/authorization. |
+| `404 Not Found` | Wrong host/path, or the backend application does not serve that path. Check the application's own URL/path settings as well as the Ingress rule. |
+| `503 Service Unavailable` | Often an upstream Service/endpoint/port problem, or an invalid NGINX auth Secret/configuration. Inspect controller logs and endpoint data; do not assume one cause. |
+
+### Prometheus-specific checks
+
+Your observed Prometheus Service and endpoint were:
+
+```text
+Service:  prometheus-stack-kube-prom-prometheus
+Port:     9090
+Endpoint: 10.42.0.154:9090 (Pod IP can change)
+```
+
+The Prometheus custom resource previously showed stale path-based settings:
+
+```text
+ExternalURL: https://ddns.net
+RoutePrefix: /prometheus
+```
+
+Those do not match the new local host-based root URL. The intended host-based settings are `externalUrl: http://prometheus.k3s.test` and `routePrefix: /` for the current HTTP HostPort lab.
+
+---
+
+## 12. Service exposure and the frontend NodePort
+
+The frontend Service was previously:
+
+```text
+frontend-service   NodePort   ...   80:32000/TCP
+```
+
+Direct access to:
+
+```text
+http://10.227.142.162:32000
+```
+
+bypasses the NGINX Ingress Controller and reaches the frontend Service's NodePort directly.
+
+When all application traffic is intended to enter through NGINX, application Services should normally be `ClusterIP` and not separately exposed with NodePort. After confirming that the Ingress route works, the frontend Service can be changed to ClusterIP:
+
+```bash
+kubectl patch svc frontend-service \
+  -n app-ns \
+  --type merge \
+  -p '{"spec":{"type":"ClusterIP"}}'
+```
+
+Do this only when you no longer need direct NodePort access. Check the backend Service too:
+
+```bash
+kubectl get svc -n app-ns
+```
+
+NGINX can reach ClusterIP Services inside the cluster; clients outside the cluster do not need direct access to application NodePorts.
+
+---
+
+## 13. Public EC2 without an AWS ALB or NLB
+
+A self-managed single-node k3s/EC2 setup can expose NGINX directly through the EC2 instance's public IP. One possible traffic path is:
+
+```text
+Internet client
+    |
+    v
+DNS A record / DDNS name -> EC2 public IP
+    |
+    v
+EC2 Security Group (TCP 80/443)
+    |
+    v
+NGINX Controller exposed on node ports 80/443
+    |
+    v
+Kubernetes Services (normally ClusterIP)
+    |
+    v
+Application Pods
+```
+
+No AWS ALB or NLB is required for that single-node traffic path. HostPort is one way to expose the controller on node ports 80/443; NodePort or k3s ServiceLB are other mechanisms with different traffic paths.
+
+For an EC2 deployment:
+
+- Use a stable public IP (for example, an Elastic IP) if the DNS record must remain stable.
+- Allow inbound TCP 80/443 only for the intended public web entry point.
+- Restrict SSH access to approved administrator IPs or use SSM where available.
+- Do not expose the full Kubernetes NodePort range to the internet.
+- Keep Argo CD and monitoring private or protect them with strong network restrictions and identity controls.
+- A single EC2 instance and single ingress controller are a single point of failure; this is not highly available merely because Kubernetes is running on it.
+
+A DDNS record only maps a hostname to an IP address. It is not a load balancer, firewall, TLS certificate, authentication system, or access-control mechanism.
+
+---
+
+## 14. Production security principles for Argo CD and monitoring
+
+Knowing the hostname must never be the security boundary. Assume hostnames and public IP addresses can be discovered.
+
+Recommended approach:
+
+1. **Network isolation:** Keep administration interfaces private where possible. Use VPN or an approved private network for operator access.
+2. **Separate traffic intent:** Public application routes and administrative routes should have different access policies. A separate private ingress/controller can provide a stronger boundary when it is genuinely isolated at the network layer.
+3. **Strong identity:** Use SSO/OIDC and MFA where supported. Apply least-privilege RBAC in Argo CD and Grafana.
+4. **Encryption:** Use HTTPS from clients to the ingress. Basic Auth over plain HTTP exposes credentials to network observers.
+5. **Prometheus exposure:** Prefer private-only access. Do not make Prometheus publicly reachable simply because an Ingress resource exists.
+6. **Firewall/security groups:** Allow only required ports and trusted source networks. Do not treat an obscure hostname as protection.
+7. **Audit and updates:** Keep the ingress implementation, Kubernetes, applications, and authentication components patched and monitor access logs.
+
+Two NGINX controllers on the same node cannot both bind the same HostPorts 80 and 443. If separate public and private controllers are used, design distinct IPs, nodes, or ports and enforce the separation with firewall/network rules. Merely creating two IngressClasses does not make one controller private.
+
+### Argo CD security note
+
+`server.insecure: "true"` disables TLS on the Argo CD server endpoint. It is suitable for this lab's HTTP-to-Service arrangement and can be used when a trusted ingress terminates client TLS, but it is not a substitute for securing the client-to-ingress connection. For production, use HTTPS at the external entry point and deliberately configure whether traffic from ingress to Argo CD is encrypted as well.
+
+---
+
+## 15. Important lifecycle note: community ingress-nginx
+
+The Kubernetes community `ingress-nginx` project was retired in March 2026. Existing installations continue to run, but the project no longer receives new releases, bug fixes, or security updates.
+
+Therefore:
+
+- It is fine to use the current installation to learn Ingress, Host headers, reverse proxying, NodePort, and HostPort concepts.
+- Do not choose the retired community controller for a new production deployment.
+- Before production, plan a migration to a maintained Ingress Controller or a supported Gateway API implementation. **F5 NGINX Ingress Controller is a separate project**; it is not simply a new version of the retired community controller.
+
+---
+
+## 16. Key concepts to remember
+
+- **DNS/hosts file:** Resolves a hostname to an IP. It does not choose the Kubernetes backend.
+- **Host header:** Tells the L7 proxy which hostname the client requested.
+- **Ingress resource:** Declares host/path-to-Service rules.
+- **Ingress Controller:** Implements those rules and proxies requests to Services.
+- **ClusterIP:** Internal Service exposure; normally appropriate for app backends behind Ingress.
+- **NodePort:** Exposes a Service on a port on cluster nodes (current values: 30143/32132 for the NGINX Service).
+- **HostPort:** Maps a Pod port to a port on the node (current controller Pod: 80/443).
+- **LoadBalancer Service:** Requests an external load-balancer implementation; in cloud environments this may be provisioned by a cloud controller. It is not automatically the same as an Ingress Controller.
+- **TLS termination:** Where HTTPS is decrypted. It can happen at NGINX, NLB, ALB, or another proxy depending on the design.
+- **Authentication vs authorization:** Authentication identifies the user; authorization controls what that user can do.
+- **Host-based routing vs security:** Separate hostnames improve routing organization, not access security.
+- **Helm values:** For chart-managed components, change persistent settings through Helm values rather than editing generated StatefulSets/Pods directly.
+
+---
+
+## 17. Official references
+
+- [Kubernetes Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
+- [Kubernetes Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
+- [Argo CD — Ingress Configuration](https://argo-cd.readthedocs.io/en/stable/operator-manual/ingress/)
+- [Argo CD command parameters ConfigMap](https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/argocd-cmd-params-cm.yaml)
+- [kube-prometheus-stack chart values](https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-prometheus-stack/values.yaml)
+- [Helm upgrade command](https://helm.sh/docs/helm/helm_upgrade/)
+- [Grafana configuration — `root_url` and `serve_from_sub_path`](https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/)
+- [ingress-nginx authentication annotations and Secret format](https://github.com/kubernetes/ingress-nginx/blob/main/docs/user-guide/nginx-configuration/annotations.md)
+- [Kubernetes announcement: Ingress NGINX retirement](https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/)
+- [Kubernetes statement on Ingress NGINX retirement](https://kubernetes.io/blog/2026/01/29/ingress-nginx-statement/)
