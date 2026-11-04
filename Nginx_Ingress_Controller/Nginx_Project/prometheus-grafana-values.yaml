@@ -1,0 +1,14 @@
+# Configuration for Grafana sub-path routing
+grafana:
+  env:
+    GF_SERVER_ROOT_URL: "https://ddns.net"
+    GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+
+# Configuration for Prometheus sub-path routing
+prometheus:
+  prometheusSpec:
+    # Adds the mandatory external URL flag to the Prometheus binary execution
+    externalUrl: "https://ddns.net"
+    # Corrects internal web paths to expect incoming traffic over the sub-path
+    routePrefix: /prometheus
+
