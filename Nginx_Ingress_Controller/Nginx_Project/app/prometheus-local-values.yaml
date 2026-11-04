@@ -1,4 +1,0 @@
-prometheus:
-  prometheusSpec:
-    externalUrl: "http://prometheus.k3s.test:30143"
-    routePrefix: "/"
