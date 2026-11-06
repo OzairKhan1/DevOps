@@ -60,6 +60,7 @@ sudo ln -s /snap/bin/certbot /usr/bin/certbot
 ```
 
 ## 2. Run certbot for every domain/subdomain listed in `server_name` (`-d` = domain)
+### Make Sure all Domains should be accessible from Internet before requesting the Certificate. If any one is not accessible the Cert Process will fail  
 
 ```bash
 sudo certbot --nginx -d cloudhatt.com -d app.cloudhatt.com
