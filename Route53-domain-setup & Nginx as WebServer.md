@@ -70,23 +70,151 @@ sudo certbot --nginx -d cloudhatt.com -d app.cloudhatt.com
 
 ---
 
-# Subdomain Setup
+# Subdomain Setup (separate site per domain/subdomain)
 
-1. In Route 53 → hosted zone → **Create record**.
-2. Record name: `app` (becomes `app.cloudhatt.com`), type **A**, value = EC2 IP / LB IP.
-   - Or use a wildcard record `*` to cover all subdomains.
-3. Add the subdomain to `server_name` in nginx:
-   ```nginx
-   server_name cloudhatt.com app.cloudhatt.com;
-   ```
-4. Reload nginx:
-   ```bash
-   sudo nginx -t && sudo systemctl reload nginx
-   ```
-5. Issue the certificate for it:
-   ```bash
-   sudo certbot --nginx -d app.cloudhatt.com
-   ```
-6. Check on https://dnschecker.org/
+Each domain/subdomain gets its own web root folder and its own nginx config file. Example below: `cloudhatt.com` (main) and `app.cloudhatt.com` (sub).
 
-> Different app per subdomain: create a separate `server` block per subdomain, each with its own `server_name` and `proxy_pass` / `root`.
+## 1. Create the DNS record
+
+In Route 53 → hosted zone → **Create record**:
+- Record name: `app` (becomes `app.cloudhatt.com`), type **A**, value = EC2 IP / LB IP.
+- Or a wildcard record `*` to cover all subdomains (DNS only; certbot `--nginx` cannot issue a wildcard cert, so list each subdomain with `-d`).
+
+## 2. Create one folder per domain in `/var/www`
+
+One folder per domain/subdomain, named exactly after it:
+
+```bash
+sudo mkdir -p /var/www/cloudhatt.com
+sudo mkdir -p /var/www/app.cloudhatt.com
+```
+
+## 3. Set ownership
+
+```bash
+sudo chown -R $USER:$USER /var/www/cloudhatt.com
+sudo chown -R $USER:$USER /var/www/app.cloudhatt.com
+```
+
+## 4. Create the nginx config for each domain
+
+Main domain:
+
+```bash
+sudo nano /etc/nginx/sites-available/cloudhatt.com
+```
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name cloudhatt.com;
+
+    root /var/www/cloudhatt.com;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+```
+
+Subdomain:
+
+```bash
+sudo nano /etc/nginx/sites-available/app.cloudhatt.com
+```
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name app.cloudhatt.com;
+
+    root /var/www/app.cloudhatt.com;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+```
+
+> One config file per domain. For another subdomain, repeat steps 2-4 with the new name.
+
+## 5. Add an `index.html` in each directory
+
+```bash
+cat > /var/www/cloudhatt.com/index.html <<'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>cloudhatt.com</title></head>
+<body><h1>Main site - cloudhatt.com</h1></body>
+</html>
+EOF
+
+cat > /var/www/app.cloudhatt.com/index.html <<'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>app.cloudhatt.com</title></head>
+<body><h1>Subdomain - app.cloudhatt.com</h1></body>
+</html>
+EOF
+```
+
+## 6. Enable the sites (symlinks)
+
+```bash
+# Link the main site config
+sudo ln -s /etc/nginx/sites-available/cloudhatt.com /etc/nginx/sites-enabled/
+
+# Link the subdomain config
+sudo ln -s /etc/nginx/sites-available/app.cloudhatt.com /etc/nginx/sites-enabled/
+```
+
+## 7. Remove the old default site
+
+```bash
+sudo rm /etc/nginx/sites-enabled/default
+```
+
+> This only removes the symlink; `/etc/nginx/sites-available/default` stays as a backup. Requests with an unknown Host header now go to the first server block alphabetically (`app.cloudhatt.com`). To control this, add `default_server` to the `listen` line of the one you want as fallback.
+
+## 8. Test and reload nginx
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+## 9. Verify HTTP before running certbot
+
+```bash
+curl -I http://cloudhatt.com
+curl -I http://app.cloudhatt.com
+```
+
+Both must return `200 OK` (also check on https://dnschecker.org/ that both names resolve to the server). Certbot fails if either name is unreachable on port 80.
+
+## 10. Re-create the certificates
+
+Certbot needs the `server_name` in each file to match the `-d` names. Because these are new server blocks, re-run it:
+
+```bash
+sudo certbot --nginx -d cloudhatt.com -d app.cloudhatt.com
+```
+
+- If certbot says a certificate already exists, choose **Expand** (or **Reinstall**), or add `--expand`. To discard the old cert and issue a fresh one: `sudo certbot delete --cert-name cloudhatt.com`, then run the command again.
+- Certbot adds the `listen 443 ssl` blocks and the HTTP→HTTPS redirect to each file automatically.
+- Alternatively, one cert per site: `sudo certbot --nginx -d cloudhatt.com` and `sudo certbot --nginx -d app.cloudhatt.com`.
+- Test auto-renewal: `sudo certbot renew --dry-run`
+
+## 11. Final check
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+curl -I https://cloudhatt.com
+curl -I https://app.cloudhatt.com
+```
+
+> Different app per subdomain: keep the separate `server` block per subdomain, and replace `root` / `try_files` with `proxy_pass http://127.0.0.1:<port>;` inside `location /`.
