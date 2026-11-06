@@ -14,6 +14,7 @@
 ## 1. Install nginx
 
 ```bash
+sudo apt update -y
 sudo apt install nginx -y
 ```
 
